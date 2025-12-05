@@ -55,25 +55,27 @@ export class ApiClient {
     }
   }
 
-  async endSession(): Promise<HourResponseDto> {
+  async endSession(): Promise<HourResponseDto | null> {
     if (!this.sessionId) {
       throw new Error('Session not started.');
     }
 
     try {
+      // Note: /session/end uses API-KEY header (already set in client defaults)
+      // It does NOT use SESSION-ID - the server finds session by API key
       const response = await this.client.post<HourResponseDto>(
         '/api/v1/session/end',
-        {},
-        {
-          headers: {
-            'SESSION-ID': this.sessionId
-          }
-        }
+        {}
       );
 
       console.log(`[API] Session ended. Final cost: ${response.data.totalCost}`);
       return response.data;
     } catch (error) {
+      // Handle 404 gracefully - means game completed and server auto-ended session
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        console.log('[API] Session already ended (game completed automatically)');
+        return null;
+      }
       console.error('[API] Failed to end session:', error);
       throw error;
     }

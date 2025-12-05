@@ -1,5 +1,5 @@
 import { ApiClient } from './api/client';
-import { HourRequestDto } from './types';
+import { HourRequestDto, HourResponseDto } from './types';
 import { loadAircraftTypes, loadAirports, getInitialStocks } from './data/loader';
 import { GameState } from './engine/state';
 
@@ -34,6 +34,7 @@ async function main() {
     console.log('[GAME] Starting game loop...\n');
 
     let lastCost = 0;
+    let lastResponse: HourResponseDto | null = null;
 
     for (let day = 0; day < TOTAL_DAYS; day++) {
       for (let hour = 0; hour < HOURS_PER_DAY; hour++) {
@@ -53,6 +54,7 @@ async function main() {
 
         // Play the round
         const response = await client.playRound(request);
+        lastResponse = response;
 
         // Process flight updates for next round
         gameState.processFlightUpdates(response.flightUpdates);
@@ -76,20 +78,23 @@ async function main() {
       }
     }
 
-    // 3. End session
+    // 3. End session (may return null if server auto-ended after round 720)
     console.log('\n[GAME] Ending session...');
     const finalResult = await client.endSession();
 
+    // Use finalResult if available, otherwise use last response from game loop
+    const result = finalResult || lastResponse;
+
     console.log('\n===========================================');
-    console.log(`       FINAL SCORE: ${finalResult.totalCost.toFixed(2)}`);
+    console.log(`       FINAL SCORE: ${result?.totalCost.toFixed(2) || 'N/A'}`);
     console.log('===========================================\n');
 
     // Summary of final penalties
-    if (finalResult.penalties.length > 0) {
-      console.log(`Final penalties (${finalResult.penalties.length}):`);
+    if (result && result.penalties.length > 0) {
+      console.log(`Final penalties (${result.penalties.length}):`);
       const penaltyCounts: Record<string, { count: number; total: number }> = {};
 
-      for (const penalty of finalResult.penalties) {
+      for (const penalty of result.penalties) {
         if (!penaltyCounts[penalty.code]) {
           penaltyCounts[penalty.code] = { count: 0, total: 0 };
         }

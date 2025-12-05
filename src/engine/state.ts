@@ -90,11 +90,19 @@ export class GameState {
                       (this.currentDay === processing.readyDay && this.currentHour >= processing.readyHour);
 
       if (isReady) {
-        // Add kits to airport stock
+        // Add kits to airport stock (with capacity check)
         const stock = this.airportStocks.get(processing.airportCode);
+        const airport = this.airports.get(processing.airportCode);
         if (stock) {
           for (const kitClass of KIT_CLASSES) {
-            stock[kitClass] += processing.kits[kitClass];
+            if (airport) {
+              // Cap at capacity to avoid OVER_CAPACITY_STOCK penalty
+              const capacity = airport.capacity[kitClass];
+              const toAdd = Math.min(processing.kits[kitClass], capacity - stock[kitClass]);
+              stock[kitClass] += Math.max(0, toAdd);
+            } else {
+              stock[kitClass] += processing.kits[kitClass];
+            }
           }
         }
       } else {
@@ -140,11 +148,14 @@ export class GameState {
             // For HUB1, processing is fast - add directly to stock
             // For spoke airports with very long processing times, queue for processing
             if (airport.isHub || maxProcessingTime <= 2) {
-              // Fast processing - add directly to stock
+              // Fast processing - add directly to stock (with capacity check)
               const stock = this.airportStocks.get(event.destinationAirport);
               if (stock) {
                 for (const kitClass of KIT_CLASSES) {
-                  stock[kitClass] += inflight.kits[kitClass];
+                  // Cap at capacity to avoid OVER_CAPACITY_STOCK penalty (777/unit)
+                  const capacity = airport.capacity[kitClass];
+                  const toAdd = Math.min(inflight.kits[kitClass], capacity - stock[kitClass]);
+                  stock[kitClass] += Math.max(0, toAdd);
                 }
               }
             } else {
@@ -158,6 +169,7 @@ export class GameState {
             }
           } else {
             // Airport not found - add directly to avoid losing kits
+            // Note: Without airport data we can't check capacity, but this shouldn't happen
             const stock = this.airportStocks.get(event.destinationAirport);
             if (stock) {
               for (const kitClass of KIT_CLASSES) {
@@ -302,7 +314,10 @@ export class GameState {
       const deficit = target - current;
 
       if (deficit > 0) {
-        order[kitClass] = Math.ceil(deficit);
+        // Cap order at remaining capacity to avoid OVER_CAPACITY_STOCK penalty
+        const currentStock = hubStock[kitClass];
+        const remainingCapacity = capacity - currentStock;
+        order[kitClass] = Math.min(Math.ceil(deficit), Math.max(0, remainingCapacity));
       }
     }
 
