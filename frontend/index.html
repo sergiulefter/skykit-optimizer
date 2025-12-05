@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SkyKit Optimizer – Frontend Preview</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="background-pattern">
+      <header class="global-header">
+        <div class="brand">
+          <span class="brand-icon">◆</span>
+          <div>
+            <p class="eyebrow">SkyKit Optimizer</p>
+            <h1>Rotable Kit Logistics Optimizer</h1>
+          </div>
+        </div>
+        <nav class="primary-nav">
+          <a href="#landing">Overview</a>
+          <a href="#live-dashboard">Live Sim</a>
+          <a href="#results">Results</a>
+        </nav>
+        <button class="cta ghost" id="open-dashboard">Back to Dashboard</button>
+      </header>
+
+      <main>
+        <section id="landing" class="page landing">
+          <div class="landing-card glass">
+            <p class="eyebrow">SkyKit Optimizer</p>
+            <h2>Rotable kit logistics optimizer for SAP Hackathon.</h2>
+            <p class="intro">
+              This application provides a real-time simulation and visualization tool that keeps kits
+              balanced throughout the global network to reduce operational downtime.
+            </p>
+            <button class="cta primary" id="start-simulation">Start Simulation</button>
+          </div>
+          <div class="footer-links">
+            <a href="#challenge">About the challenge</a>
+            <a href="#how-it-works">How it works</a>
+            <a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a>
+          </div>
+        </section>
+
+        <section id="live-dashboard" class="page live">
+          <div class="section-heading">
+            <p class="eyebrow">Live Simulation Dashboard</p>
+            <h2>Monitoring round 5 · Day 12</h2>
+          </div>
+          <div class="stats-grid" id="live-stats"></div>
+
+          <div class="live-panels">
+            <div class="inventory-panel card">
+              <div class="panel-header">
+                <h3>Airport Inventory</h3>
+                <label class="checkbox">
+                  <input type="checkbox" id="low-stock-toggle" />
+                  Show only low stock airports
+                </label>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>F</th>
+                    <th>B</th>
+                    <th>PE</th>
+                    <th>E</th>
+                  </tr>
+                </thead>
+                <tbody id="inventory-table"></tbody>
+              </table>
+            </div>
+
+            <div class="map-panel card">
+              <div class="map-overlay">
+                <p class="eyebrow">Global Demand Map</p>
+                <p class="muted">Real-time kit allocation paths across 161 airports.</p>
+              </div>
+            </div>
+
+            <div class="events-panel card">
+              <div class="panel-tabs">
+                <button class="tab-button active" data-panel="events">Events</button>
+                <button class="tab-button" data-panel="penalties">Penalties</button>
+              </div>
+              <div class="panel-scroll" id="events-list"></div>
+            </div>
+          </div>
+
+          <div class="sim-controls card">
+            <div class="playback">
+              <button class="play">
+                <span>▶</span>
+              </button>
+              <div class="speed">
+                <span>Speed:</span>
+                <button class="chip active">x1</button>
+                <button class="chip">x10</button>
+                <button class="chip">x50</button>
+                <button class="chip">x100</button>
+              </div>
+            </div>
+            <p class="log" id="sim-log"></p>
+          </div>
+        </section>
+
+        <section id="results" class="page results">
+          <div class="section-heading">
+            <p class="eyebrow">Final Simulation Results</p>
+            <h2>Simulation Results Overview</h2>
+          </div>
+
+          <div class="results-grid" id="results-grid"></div>
+
+          <div class="charts-row">
+            <div class="chart-card card">
+              <div class="chart-header">
+                <div>
+                  <p class="label">Cost over time</p>
+                  <h4>$1.2M</h4>
+                  <p class="muted">Last 30 days <span class="positive">+5.2%</span></p>
+                </div>
+              </div>
+              <svg viewBox="0 0 320 120" class="chart-line" aria-hidden="true">
+                <polyline
+                  points="0,80 40,30 80,50 120,20 160,60 200,35 240,70 280,40 320,55"
+                />
+              </svg>
+              <div class="chart-foot">
+                <span>Wk 1</span>
+                <span>Wk 2</span>
+                <span>Wk 3</span>
+                <span>Wk 4</span>
+              </div>
+            </div>
+
+            <div class="chart-card card">
+              <div class="chart-header">
+                <div>
+                  <p class="label">Penalties over time</p>
+                  <h4>112</h4>
+                  <p class="muted">Last 30 days <span class="negative">+1.8%</span></p>
+                </div>
+              </div>
+              <div class="bars" aria-hidden="true">
+                <span style="height: 40%"></span>
+                <span style="height: 70%"></span>
+                <span style="height: 55%"></span>
+                <span style="height: 80%"></span>
+              </div>
+              <div class="chart-foot">
+                <span>Wk 1</span>
+                <span>Wk 2</span>
+                <span>Wk 3</span>
+                <span>Wk 4</span>
+              </div>
+            </div>
+
+            <div class="chart-card card">
+              <div class="chart-header">
+                <div>
+                  <p class="label">Kit purchases over time</p>
+                  <h4>15</h4>
+                  <p class="muted">Last 30 days <span class="positive">+10%</span></p>
+                </div>
+              </div>
+              <div class="bars alt" aria-hidden="true">
+                <span style="height: 30%"></span>
+                <span style="height: 60%"></span>
+                <span style="height: 40%"></span>
+                <span style="height: 65%"></span>
+              </div>
+              <div class="chart-foot">
+                <span>Wk 1</span>
+                <span>Wk 2</span>
+                <span>Wk 3</span>
+                <span>Wk 4</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tables-row">
+            <div class="table-card card">
+              <div class="panel-header">
+                <h3>Top 10 Worst Flights</h3>
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Flight ID</th>
+                    <th>Route</th>
+                    <th>Penalty</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="worst-flights"></tbody>
+              </table>
+            </div>
+
+            <div class="recommendations card" id="recommendations"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
