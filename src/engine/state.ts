@@ -69,10 +69,12 @@ export class GameState {
     // Process any kits that finished processing and are now available
     this.processReadyKits();
 
-    // Find all CHECKED_IN flights departing at this exact time
+    // Find all flights departing at this exact time
+    // Include both CHECKED_IN (preferred - has real passenger count) and SCHEDULED (fallback)
+    // This ensures we don't miss flights that never transition to CHECKED_IN
     this.flightsReadyToDepart = [];
     for (const flight of this.knownFlights.values()) {
-      if (flight.eventType === 'CHECKED_IN' &&
+      if ((flight.eventType === 'CHECKED_IN' || flight.eventType === 'SCHEDULED') &&
           flight.departure.day === day &&
           flight.departure.hour === hour) {
         this.flightsReadyToDepart.push(flight);

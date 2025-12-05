@@ -35,9 +35,17 @@ async function main() {
 
     let lastCost = 0;
     let lastResponse: HourResponseDto | null = null;
+    let previousResponse: HourResponseDto | null = null;
 
     for (let day = 0; day < TOTAL_DAYS; day++) {
       for (let hour = 0; hour < HOURS_PER_DAY; hour++) {
+        // CRITICAL: Process PREVIOUS round's flight events FIRST
+        // This ensures we know about CHECKED_IN flights before calculating loads
+        // Without this, we'd miss flights that transition SCHEDULED→CHECKED_IN in the current hour
+        if (previousResponse) {
+          gameState.processFlightUpdates(previousResponse.flightUpdates);
+        }
+
         // Update game state time
         gameState.setTime(day, hour);
 
@@ -55,9 +63,7 @@ async function main() {
         // Play the round
         const response = await client.playRound(request);
         lastResponse = response;
-
-        // Process flight updates for next round
-        gameState.processFlightUpdates(response.flightUpdates);
+        previousResponse = response;
 
         // Log progress every day at midnight
         if (hour === 0) {
@@ -76,6 +82,11 @@ async function main() {
           console.log(`  ⚠️  ${response.penalties.length} penalties, total: ${total.toFixed(2)}`);
         }
       }
+    }
+
+    // Process the final round's events (important for accurate end-of-game state)
+    if (previousResponse) {
+      gameState.processFlightUpdates(previousResponse.flightUpdates);
     }
 
     // 3. End session (may return null if server auto-ended after round 720)

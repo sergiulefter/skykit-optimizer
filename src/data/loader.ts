@@ -4,11 +4,19 @@ import * as os from 'os';
 import { parse } from 'csv-parse/sync';
 import { Aircraft, Airport, FlightPlan, PerClassAmount } from '../types';
 
-// Dynamic path based on current user's home directory
-// Expected structure: ~/Desktop/HackitAll2025/eval-platform/src/main/resources/liquibase/data
+// Dynamic path based on current user's home directory and OS
+// Windows: ~/Desktop/HackitAll2025/eval-platform/src/main/resources/liquibase/data
+// Ubuntu:  ~/repos/hackitall2025/eval-platform/src/main/resources/liquibase/data
 function getDataPath(): string {
   const homeDir = os.homedir();
-  return path.join(homeDir, 'Desktop', 'HackitAll2025', 'eval-platform', 'src', 'main', 'resources', 'liquibase', 'data');
+  const isWindows = os.platform() === 'win32';
+
+  if (isWindows) {
+    return path.join(homeDir, 'Desktop', 'HackitAll2025', 'eval-platform', 'src', 'main', 'resources', 'liquibase', 'data');
+  } else {
+    // Ubuntu/Linux path
+    return path.join(homeDir, 'repos', 'hackitall2025', 'eval-platform', 'src', 'main', 'resources', 'liquibase', 'data');
+  }
 }
 
 const DATA_PATH = getDataPath();
