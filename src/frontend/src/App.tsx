@@ -4,13 +4,19 @@ import { InventoryPanel } from './components/InventoryPanel';
 import { MapPanel } from './components/MapPanel';
 import { EventsPanel } from './components/EventsPanel';
 import { SimControls } from './components/SimControls';
+import { ThemeToggle } from './components/ThemeToggle';
+import { useTheme } from './hooks/useTheme';
 
 function App() {
   const { state, isLoading, error, isConnected, startGame } = useGameState(1000);
+  const { theme, toggleTheme } = useTheme();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[length:24px_24px] p-10">
+      <div className="min-h-screen bg-[radial-gradient(var(--color-grid)_1px,transparent_1px)] bg-[length:24px_24px] p-10">
+        <div className="flex justify-end mb-8">
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+        </div>
         <div className="flex flex-col items-center justify-center min-h-[200px] text-text-muted">
           <div className="w-10 h-10 border-3 border-border border-t-accent rounded-full animate-spin mb-4" />
           <p>Connecting to backend...</p>
@@ -21,13 +27,22 @@ function App() {
 
   if (error && !isConnected) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[length:24px_24px] p-10">
+      <div className="min-h-screen bg-[radial-gradient(var(--color-grid)_1px,transparent_1px)] bg-[length:24px_24px] p-10">
         <header className="flex justify-between items-center gap-4 mb-8 flex-wrap">
           <div className="flex items-center gap-4">
             <span className="text-3xl text-accent">◆</span>
             <div>
               <p className="uppercase tracking-[0.2em] text-xs text-text-muted mb-0.5">SkyKit Optimizer</p>
               <h1 className="m-0 text-xl">Rotable Kit Logistics Optimizer</h1>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 flex-wrap justify-end">
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            <div className="flex items-center gap-2">
+              <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-success animate-pulse-opacity' : 'bg-text-muted'}`} />
+              <span className="text-text-muted text-sm">
+                {isConnected ? 'Connected to backend' : 'Disconnected'}
+              </span>
             </div>
           </div>
         </header>
@@ -75,7 +90,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[length:24px_24px] p-10">
+    <div className="min-h-screen bg-[radial-gradient(var(--color-grid)_1px,transparent_1px)] bg-[length:24px_24px] p-10">
       <header className="flex justify-between items-center gap-4 mb-8 flex-wrap">
         <div className="flex items-center gap-4">
           <span className="text-3xl text-accent">◆</span>
@@ -84,11 +99,14 @@ function App() {
             <h1 className="m-0 text-xl">Rotable Kit Logistics Optimizer</h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-success animate-pulse-opacity' : 'bg-text-muted'}`} />
-          <span className="text-text-muted text-sm">
-            {isConnected ? 'Connected to backend' : 'Disconnected'}
-          </span>
+        <div className="flex items-center gap-4 flex-wrap justify-end">
+          <ThemeToggle theme={theme} onToggle={toggleTheme} />
+          <div className="flex items-center gap-2">
+            <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-success animate-pulse-opacity' : 'bg-text-muted'}`} />
+            <span className="text-text-muted text-sm">
+              {isConnected ? 'Connected to backend' : 'Disconnected'}
+            </span>
+          </div>
         </div>
       </header>
 
