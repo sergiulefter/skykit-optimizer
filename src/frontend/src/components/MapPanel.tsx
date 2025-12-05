@@ -9,18 +9,18 @@ export function MapPanel({ activeFlights }: MapPanelProps) {
   const checkedInCount = activeFlights.filter(f => f.status === 'CHECKED_IN').length;
 
   return (
-    <div className="map-panel card">
-      <div className="map-overlay">
-        <p className="eyebrow">Global Network</p>
-        <p className="muted">Real-time kit allocation across 161 airports.</p>
-        <div style={{ marginTop: '2rem' }}>
-          <p style={{ margin: '0.5rem 0' }}>
-            <span className="positive">{scheduledCount}</span> scheduled flights
+    <div className="relative rounded-[20px] border border-border min-h-[360px] overflow-hidden flex items-center justify-center bg-[radial-gradient(circle_at_30%_30%,rgba(46,180,255,0.15),transparent_55%),radial-gradient(circle_at_60%_60%,rgba(46,255,180,0.1),transparent_50%),#050a12]">
+      <div className="absolute inset-6 rounded-[20px] p-6 bg-linear-to-br from-black/45 to-transparent border border-white/10 z-10">
+        <p className="uppercase tracking-[0.2em] text-xs text-text-muted mb-0.5">Global Network</p>
+        <p className="text-text-muted text-sm">Real-time kit allocation across 161 airports.</p>
+        <div className="mt-8 space-y-2">
+          <p className="my-2">
+            <span className="text-success">{scheduledCount}</span> scheduled flights
           </p>
-          <p style={{ margin: '0.5rem 0' }}>
-            <span className="positive">{checkedInCount}</span> checked-in flights
+          <p className="my-2">
+            <span className="text-success">{checkedInCount}</span> checked-in flights
           </p>
-          <p style={{ margin: '0.5rem 0' }}>
+          <p className="my-2">
             <strong>{activeFlights.length}</strong> total active
           </p>
         </div>

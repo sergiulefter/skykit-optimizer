@@ -17,8 +17,6 @@ export function SimControls({ isRunning, isComplete, round, onStartGame }: SimCo
     ? 'Simulation Running...'
     : 'Ready to start';
 
-  const statusClass = isComplete ? 'complete' : isRunning ? 'running' : '';
-
   const handleStart = async () => {
     setIsStarting(true);
     setStartMessage(null);
@@ -31,15 +29,21 @@ export function SimControls({ isRunning, isComplete, round, onStartGame }: SimCo
 
   const canStart = !isRunning && !isComplete && !isStarting;
 
+  const statusDotClass = isComplete
+    ? 'bg-accent'
+    : isRunning
+    ? 'bg-success animate-pulse-opacity'
+    : 'bg-text-muted';
+
   return (
-    <div className="sim-controls card">
-      <div className="status-indicator">
-        <div className={`status-dot ${statusClass}`} />
+    <div className="bg-panel rounded-[20px] border border-border p-6 flex justify-between items-center gap-6">
+      <div className="flex items-center gap-2">
+        <div className={`w-2.5 h-2.5 rounded-full ${statusDotClass}`} />
         <span>{statusText}</span>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <p className="log">
+      <div className="flex items-center gap-4">
+        <p className="text-text-muted font-mono text-sm m-0">
           Round {round} / 720 ({((round / 720) * 100).toFixed(1)}% complete)
         </p>
 
@@ -47,26 +51,14 @@ export function SimControls({ isRunning, isComplete, round, onStartGame }: SimCo
           <button
             onClick={handleStart}
             disabled={isStarting}
-            style={{
-              padding: '0.75rem 1.5rem',
-              fontSize: '1rem',
-              fontWeight: 600,
-              backgroundColor: 'var(--accent)',
-              color: '#001121',
-              border: 'none',
-              borderRadius: '999px',
-              cursor: isStarting ? 'not-allowed' : 'pointer',
-              opacity: isStarting ? 0.7 : 1,
-              boxShadow: '0 10px 30px rgba(46, 180, 255, 0.35)',
-              transition: 'transform 0.2s ease'
-            }}
+            className={`px-6 py-3 text-base font-semibold bg-accent text-[#001121] border-none rounded-full cursor-pointer shadow-[0_10px_30px_rgba(46,180,255,0.35)] transition-transform hover:translate-y-[-2px] ${isStarting ? 'opacity-70 cursor-not-allowed' : ''}`}
           >
             {isStarting ? 'Starting...' : 'Start Simulation'}
           </button>
         )}
 
         {startMessage && (
-          <span className="negative" style={{ fontSize: '0.9rem' }}>
+          <span className="text-danger text-sm">
             {startMessage}
           </span>
         )}

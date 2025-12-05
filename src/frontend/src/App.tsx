@@ -10,9 +10,9 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="background-pattern">
-        <div className="loading">
-          <div className="loading-spinner" />
+      <div className="min-h-screen bg-[radial-gradient(rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[length:24px_24px] p-10">
+        <div className="flex flex-col items-center justify-center min-h-[200px] text-text-muted">
+          <div className="w-10 h-10 border-3 border-border border-t-accent rounded-full animate-spin mb-4" />
           <p>Connecting to backend...</p>
         </div>
       </div>
@@ -21,29 +21,29 @@ function App() {
 
   if (error && !isConnected) {
     return (
-      <div className="background-pattern">
-        <header className="global-header">
-          <div className="brand">
-            <span className="brand-icon">◆</span>
+      <div className="min-h-screen bg-[radial-gradient(rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[length:24px_24px] p-10">
+        <header className="flex justify-between items-center gap-4 mb-8 flex-wrap">
+          <div className="flex items-center gap-4">
+            <span className="text-3xl text-accent">◆</span>
             <div>
-              <p className="eyebrow">SkyKit Optimizer</p>
-              <h1>Rotable Kit Logistics Optimizer</h1>
+              <p className="uppercase tracking-[0.2em] text-xs text-text-muted mb-0.5">SkyKit Optimizer</p>
+              <h1 className="m-0 text-xl">Rotable Kit Logistics Optimizer</h1>
             </div>
           </div>
         </header>
 
-        <section className="page">
-          <div className="section-heading">
-            <p className="eyebrow">Connection Error</p>
-            <h2>Cannot connect to backend</h2>
+        <section className="bg-gradient-to-br from-bg-alt/95 to-panel-dark/95 rounded-[34px] p-10 mb-10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02),0_30px_80px_rgba(6,6,10,0.7)]">
+          <div>
+            <p className="uppercase tracking-[0.2em] text-xs text-text-muted mb-0.5">Connection Error</p>
+            <h2 className="mt-1 mb-6 text-4xl">Cannot connect to backend</h2>
           </div>
-          <p className="muted">
-            Make sure the backend server is running on <code>http://localhost:3001</code>
+          <p className="text-text-muted text-sm">
+            Make sure the backend server is running on <code className="bg-panel px-2 py-1 rounded">http://localhost:3001</code>
           </p>
-          <p className="muted" style={{ marginTop: '1rem' }}>
-            Run <code>npm run backend</code> to start the backend server.
+          <p className="text-text-muted text-sm mt-4">
+            Run <code className="bg-panel px-2 py-1 rounded">npm run backend</code> to start the backend server.
           </p>
-          <p className="negative" style={{ marginTop: '1rem' }}>
+          <p className="text-danger text-sm mt-4">
             Error: {error}
           </p>
         </section>
@@ -74,27 +74,27 @@ function App() {
   };
 
   return (
-    <div className="background-pattern">
-      <header className="global-header">
-        <div className="brand">
-          <span className="brand-icon">◆</span>
+    <div className="min-h-screen bg-[radial-gradient(rgba(255,255,255,0.12)_1px,transparent_1px)] bg-[length:24px_24px] p-10">
+      <header className="flex justify-between items-center gap-4 mb-8 flex-wrap">
+        <div className="flex items-center gap-4">
+          <span className="text-3xl text-accent">◆</span>
           <div>
-            <p className="eyebrow">SkyKit Optimizer</p>
-            <h1>Rotable Kit Logistics Optimizer</h1>
+            <p className="uppercase tracking-[0.2em] text-xs text-text-muted mb-0.5">SkyKit Optimizer</p>
+            <h1 className="m-0 text-xl">Rotable Kit Logistics Optimizer</h1>
           </div>
         </div>
-        <div className="status-indicator">
-          <div className={`status-dot ${isConnected ? 'running' : ''}`} />
-          <span className="muted">
+        <div className="flex items-center gap-2">
+          <div className={`w-2.5 h-2.5 rounded-full ${isConnected ? 'bg-success animate-pulse-opacity' : 'bg-text-muted'}`} />
+          <span className="text-text-muted text-sm">
             {isConnected ? 'Connected to backend' : 'Disconnected'}
           </span>
         </div>
       </header>
 
-      <section className="page">
-        <div className="section-heading">
-          <p className="eyebrow">Live Simulation Dashboard</p>
-          <h2>Day {gameState.day} · Hour {gameState.hour}</h2>
+      <section className="bg-gradient-to-br from-bg-alt/95 to-panel-dark/95 rounded-[34px] p-10 mb-10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02),0_30px_80px_rgba(6,6,10,0.7)]">
+        <div className="mb-6">
+          <p className="uppercase tracking-[0.2em] text-xs text-text-muted mb-0.5">Live Simulation Dashboard</p>
+          <h2 className="mt-1 mb-6 text-4xl">Day {gameState.day} · Hour {gameState.hour}</h2>
         </div>
 
         <StatsGrid
@@ -103,7 +103,7 @@ function App() {
           hour={gameState.hour}
         />
 
-        <div className="live-panels">
+        <div className="grid grid-cols-[300px_minmax(280px,1fr)_350px] gap-5 mb-6 max-xl:grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
           <InventoryPanel airports={gameState.airports} />
           <MapPanel activeFlights={gameState.activeFlights} />
           <EventsPanel
