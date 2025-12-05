@@ -75,34 +75,34 @@ export function loadAirports(): Map<string, Airport> {
       name: row.name,
       isHub: row.code === 'HUB1',
       processingTime: {
-        first: parseInt(row.fc_processing_time) || 0,
-        business: parseInt(row.bc_processing_time) || 0,
-        premiumEconomy: parseInt(row.pe_processing_time) || 0,
-        economy: parseInt(row.ec_processing_time) || 0
+        first: parseInt(row.first_processing_time) || 0,
+        business: parseInt(row.business_processing_time) || 0,
+        premiumEconomy: parseInt(row.premium_economy_processing_time) || 0,
+        economy: parseInt(row.economy_processing_time) || 0
       },
       processingCost: {
-        first: parseFloat(row.fc_processing_cost) || 0,
-        business: parseFloat(row.bc_processing_cost) || 0,
-        premiumEconomy: parseFloat(row.pe_processing_cost) || 0,
-        economy: parseFloat(row.ec_processing_cost) || 0
+        first: parseFloat(row.first_processing_cost) || 0,
+        business: parseFloat(row.business_processing_cost) || 0,
+        premiumEconomy: parseFloat(row.premium_economy_processing_cost) || 0,
+        economy: parseFloat(row.economy_processing_cost) || 0
       },
       loadingCost: {
-        first: parseFloat(row.fc_loading_cost) || 0,
-        business: parseFloat(row.bc_loading_cost) || 0,
-        premiumEconomy: parseFloat(row.pe_loading_cost) || 0,
-        economy: parseFloat(row.ec_loading_cost) || 0
+        first: parseFloat(row.first_loading_cost) || 0,
+        business: parseFloat(row.business_loading_cost) || 0,
+        premiumEconomy: parseFloat(row.premium_economy_loading_cost) || 0,
+        economy: parseFloat(row.economy_loading_cost) || 0
       },
       initialStock: {
-        first: parseInt(row.fc_initial_stock) || 0,
-        business: parseInt(row.bc_initial_stock) || 0,
-        premiumEconomy: parseInt(row.pe_initial_stock) || 0,
-        economy: parseInt(row.ec_initial_stock) || 0
+        first: parseInt(row.initial_fc_stock) || 0,
+        business: parseInt(row.initial_bc_stock) || 0,
+        premiumEconomy: parseInt(row.initial_pe_stock) || 0,
+        economy: parseInt(row.initial_ec_stock) || 0
       },
       capacity: {
-        first: parseInt(row.fc_capacity) || 0,
-        business: parseInt(row.bc_capacity) || 0,
-        premiumEconomy: parseInt(row.pe_capacity) || 0,
-        economy: parseInt(row.ec_capacity) || 0
+        first: parseInt(row.capacity_fc) || 0,
+        business: parseInt(row.capacity_bc) || 0,
+        premiumEconomy: parseInt(row.capacity_pe) || 0,
+        economy: parseInt(row.capacity_ec) || 0
       }
     };
     airportMap.set(airport.code, airport);

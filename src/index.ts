@@ -52,7 +52,8 @@ async function main() {
 
         // Build request with flight loads
         const flightLoads = gameState.calculateFlightLoads();
-        const purchaseOrder = gameState.calculatePurchaseOrder();
+        // Temporarily disable purchases to test with initial stock only
+        const purchaseOrder = undefined; // gameState.calculatePurchaseOrder();
 
         const request: HourRequestDto = {
           day,
@@ -69,7 +70,7 @@ async function main() {
         // Log progress every day at midnight
         if (hour === 0) {
           const costDelta = response.totalCost - lastCost;
-          console.log(`[DAY ${day.toString().padStart(2, '0')}] Cost: ${response.totalCost.toFixed(2)} (+${costDelta.toFixed(2)}) | Flights: ${gameState.knownFlights.size} | Departing: ${gameState.flightsReadyToDepart.length}`);
+          console.log(`[DAY ${day.toString().padStart(2, '0')}] Cost: ${response.totalCost.toFixed(2)} (+${costDelta.toFixed(2)}) | Flights: ${gameState.knownFlights.size} | Departing: ${gameState.flightsReadyToDepart.length} | Loads sent: ${flightLoads.length}`);
           lastCost = response.totalCost;
         }
 

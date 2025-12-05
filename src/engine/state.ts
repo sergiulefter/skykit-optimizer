@@ -212,7 +212,7 @@ export class GameState {
       const aircraft = this.aircraftTypes.get(flight.aircraftType);
 
       if (!originStock || !aircraft) {
-        console.warn(`[STATE] Missing data for flight ${flight.flightNumber}`);
+        console.warn(`[STATE] Missing data for flight ${flight.flightNumber} from ${flight.originAirport}`);
         continue;
       }
 
@@ -356,6 +356,14 @@ export class GameState {
         order[kitClass] = Math.min(Math.ceil(deficit), Math.max(0, remainingCapacity));
       }
     }
+
+    // Apply API limits (from Java validation)
+    // first, business, economy: max 42000
+    // premiumEconomy: max 1000
+    order.first = Math.min(order.first, 42000);
+    order.business = Math.min(order.business, 42000);
+    order.premiumEconomy = Math.min(order.premiumEconomy, 1000);
+    order.economy = Math.min(order.economy, 42000);
 
     const totalOrder = order.first + order.business + order.premiumEconomy + order.economy;
     return totalOrder > 0 ? order : undefined;
