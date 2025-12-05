@@ -137,12 +137,45 @@ async function runGame() {
           lastCost = response.totalCost;
         }
 
-        // Log penalties (limit to avoid spam)
-        if (response.penalties.length > 0 && response.penalties.length <= 5) {
+        // DEBUG: Extra detailed logging for days 25-29
+        if (day >= 25) {
+          console.log(`[DEBUG D${day}H${hour}] Cost: $${(response.totalCost / 1000000).toFixed(2)}M | Penalties: ${response.penalties.length} | Loads sent: ${flightLoads.length}`);
+
+          // Log what we loaded
+          if (flightLoads.length > 0) {
+            let totalEC = 0;
+            for (const load of flightLoads) {
+              totalEC += load.loadedKits.economy;
+            }
+            console.log(`  [DEBUG] Total economy kits loaded this round: ${totalEC}`);
+          }
+
+          // Group penalties by type
+          if (response.penalties.length > 0) {
+            const byType: Record<string, { count: number; total: number }> = {};
+            for (const p of response.penalties) {
+              if (!byType[p.code]) byType[p.code] = { count: 0, total: 0 };
+              byType[p.code].count++;
+              byType[p.code].total += p.penalty;
+            }
+            for (const [code, data] of Object.entries(byType)) {
+              console.log(`  [DEBUG] ${code}: ${data.count}x = $${(data.total / 1000000).toFixed(2)}M`);
+            }
+          }
+
+          // Log hub stock for economy
+          const hubStock = gameState.getStock('HUB1');
+          if (hubStock) {
+            console.log(`  [DEBUG] HUB1 stock: EC=${hubStock.economy}, PE=${hubStock.premiumEconomy}, BC=${hubStock.business}, FC=${hubStock.first}`);
+          }
+        }
+
+        // Log penalties (limit to avoid spam) - only for days < 25
+        if (day < 25 && response.penalties.length > 0 && response.penalties.length <= 5) {
           for (const penalty of response.penalties) {
             console.log(`  [PENALTY] ${penalty.code}: ${penalty.penalty.toFixed(2)}`);
           }
-        } else if (response.penalties.length > 5) {
+        } else if (day < 25 && response.penalties.length > 5) {
           const total = response.penalties.reduce((sum, p) => sum + p.penalty, 0);
           console.log(`  [PENALTIES] ${response.penalties.length} penalties, total: ${total.toFixed(2)}`);
         }

@@ -39,7 +39,7 @@
 }
 
 :root[data-theme='dark'] {
-  --color-grid: rgba(255, 255, 255, 0.12);
+  --color-grid: rgb(140, 135, 135);
   color-scheme: dark;
 }
 

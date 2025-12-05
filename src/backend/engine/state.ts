@@ -197,13 +197,21 @@ export class GameState {
   calculateFlightLoads(): FlightLoadDto[] {
     const loads: FlightLoadDto[] = [];
 
-    // Sort flights by priority: longer distance = higher penalty if unfulfilled
-    // UNFULFILLED_KIT_FACTOR_PER_DISTANCE = 0.003, so distance matters
+    // END-GAME MODE: Day 27+ requires aggressive kit distribution
+    // At end-of-game, unfulfilled flights get massive penalties (1.5 × distance × passengers)
+    const isEndGame = this.currentDay >= 27;
+
+    // Sort flights by priority:
+    // 1. Flights FROM HUB1 get highest priority (they distribute kits to spokes)
+    // 2. Then by distance (higher penalty if unfulfilled)
     const sortedFlights = [...this.flightsReadyToDepart].sort((a, b) => {
-      // Get distance from flight plan for priority
+      // HUB1 departures first
+      if (a.originAirport === 'HUB1' && b.originAirport !== 'HUB1') return -1;
+      if (b.originAirport === 'HUB1' && a.originAirport !== 'HUB1') return 1;
+
+      // Then by distance
       const distA = this.getFlightDistance(a.originAirport, a.destinationAirport);
       const distB = this.getFlightDistance(b.originAirport, b.destinationAirport);
-      // Higher distance = higher priority (sort descending)
       return distB - distA;
     });
 
@@ -226,33 +234,47 @@ export class GameState {
 
       for (const kitClass of KIT_CLASSES) {
         const demand = flight.passengers[kitClass];
-        const available = originStock[kitClass];
+        // CRITICAL: Use current stock value (may have been reduced by previous flights this round)
+        // Also keep a safety buffer to avoid NEGATIVE_INVENTORY penalties from server-side tracking
+        const rawAvailable = originStock[kitClass];
+        const safetyBuffer = flight.originAirport === 'HUB1' ? 100 : 20; // Keep buffer at each airport
+        const available = Math.max(0, rawAvailable - safetyBuffer);
         const capacity = aircraft.kitCapacity[kitClass];
 
-        // Load passenger demand first
+        // DEBUG: Log the values for first few flights on day 1
+        if (this.currentDay === 1 && this.currentHour === 0 && kitClass === 'economy') {
+          console.log(`  [CALC] Flight ${flight.flightNumber} ${flight.originAirport}→${flight.destinationAirport} (aircraft: ${flight.aircraftType}): demand=${demand}, available=${available}, capacity=${capacity}, aircraft.kitCapacity=${JSON.stringify(aircraft?.kitCapacity)}`);
+        }
+
+        // Load passenger demand first - NEVER exceed available stock (with safety buffer)
         let toLoad = Math.min(demand, available, capacity);
 
-        // OPTIMIZATION: For flights FROM HUB1, load extra kits to redistribute inventory
-        // The transport cost is much lower than UNFULFILLED penalty (0.003 × distance × kit_cost)
-        if (flight.originAirport === 'HUB1' && toLoad < capacity) {
-          // Check destination airport's stock level
+        // OPTIMIZATION: For flights FROM HUB1, load extra kits based on destination's actual deficit
+        if (flight.originAirport === 'HUB1' && toLoad < capacity && available > toLoad) {
           const destStock = this.airportStocks.get(flight.destinationAirport);
           const destAirport = this.airports.get(flight.destinationAirport);
 
           if (destStock && destAirport) {
-            const destCapacity = destAirport.capacity[kitClass];
+            // Calculate destination's demand for next 48 hours
+            const destDemand48h = this.calculateUpcomingDemandForAirport(flight.destinationAirport, 48, kitClass);
+
+            // Calculate what will be available at destination
             const destCurrent = destStock[kitClass];
-
-            // Calculate how many extra kits we can send without overfilling destination
-            const destRoom = destCapacity - destCurrent;
-            // Also account for kits already in-flight to this destination
             const inFlightToDestination = this.getInFlightKitsToAirport(flight.destinationAirport, kitClass);
-            const effectiveRoom = Math.max(0, destRoom - inFlightToDestination);
+            const processingAtDestination = this.getProcessingKitsAtAirport(flight.destinationAirport, kitClass);
+            const destExpected = destCurrent + inFlightToDestination + processingAtDestination;
 
-            // Load extra kits: min of (remaining capacity, available stock, destination room)
+            // Calculate actual deficit at destination
+            const destDeficit = Math.max(0, destDemand48h - destExpected);
+
+            // Also check capacity constraint
+            const destCapacity = destAirport.capacity[kitClass];
+            const destRoom = Math.max(0, destCapacity - destCurrent - inFlightToDestination - processingAtDestination);
+
+            // Load extra kits: min of (deficit needed, room available, aircraft capacity, hub stock)
             const remainingCapacity = capacity - toLoad;
             const remainingStock = available - toLoad;
-            const extraToLoad = Math.min(remainingCapacity, remainingStock, effectiveRoom);
+            const extraToLoad = Math.min(destDeficit, destRoom, remainingCapacity, remainingStock);
 
             if (extraToLoad > 0) {
               toLoad += extraToLoad;
@@ -260,25 +282,46 @@ export class GameState {
           }
         }
 
-        // OPTIMIZATION: For flights TO HUB1, load extra kits if spoke has surplus
-        // This brings kits back to hub for redistribution to other spokes
-        if (flight.destinationAirport === 'HUB1' && toLoad < capacity) {
-          // Check if we have surplus stock beyond what's needed for upcoming flights
-          const upcomingDemand = this.calculateUpcomingDemandForAirport(flight.originAirport, 48, kitClass);
-          const currentStock = available - toLoad; // What remains after loading demand
-          const surplus = Math.max(0, currentStock - upcomingDemand);
-
-          if (surplus > 0) {
+        // OPTIMIZATION: For flights TO HUB1, load extra kits to bring back to hub
+        if (flight.destinationAirport === 'HUB1' && toLoad < capacity && available > toLoad) {
+          if (isEndGame) {
+            // END-GAME: Send ALL available kits back to hub
             const remainingCapacity = capacity - toLoad;
-            const extraToLoad = Math.min(remainingCapacity, surplus);
+            const extraToLoad = Math.min(remainingCapacity, available - toLoad);
             toLoad += extraToLoad;
+          } else {
+            // Normal mode: only send surplus beyond upcoming demand
+            const upcomingDemand = this.calculateUpcomingDemandForAirport(flight.originAirport, 48, kitClass);
+            const currentStock = available - toLoad;
+            const surplus = Math.max(0, currentStock - upcomingDemand);
+
+            if (surplus > 0) {
+              const remainingCapacity = capacity - toLoad;
+              const extraToLoad = Math.min(remainingCapacity, surplus);
+              toLoad += extraToLoad;
+            }
           }
         }
 
+        // CRITICAL SAFETY CHECK: Never go negative (check against rawAvailable, not buffered available)
+        if (toLoad > rawAvailable) {
+          console.error(`[BUG PREVENTED] Would go negative! ${kitClass}: toLoad=${toLoad}, rawAvailable=${rawAvailable}, flight=${flight.flightNumber}`);
+          toLoad = Math.max(0, rawAvailable);
+        }
+
+        // Additional check: never load more than what's actually there
+        toLoad = Math.min(toLoad, rawAvailable);
+
         loadedKits[kitClass] = toLoad;
 
-        // Deduct from stock
+        // Deduct from stock - this MUST happen for subsequent flights to see reduced stock
         originStock[kitClass] -= toLoad;
+
+        // CRITICAL: Verify stock didn't go negative (should never happen with above checks)
+        if (originStock[kitClass] < 0) {
+          console.error(`[BUG] Stock went negative! ${flight.originAirport}.${kitClass}=${originStock[kitClass]}`);
+          originStock[kitClass] = 0; // Clamp to 0 to prevent cascading issues
+        }
       }
 
       // Track this flight's kits as in-flight
@@ -289,6 +332,12 @@ export class GameState {
         arrivalDay: flight.arrival.day,
         arrivalHour: flight.arrival.hour
       });
+
+      // DEBUG: Log what we're loading
+      const totalLoaded = loadedKits.first + loadedKits.business + loadedKits.premiumEconomy + loadedKits.economy;
+      if (totalLoaded > 0 && this.currentDay >= 25) {
+        console.log(`  [LOAD] Flight ${flight.flightNumber} ${flight.originAirport}→${flight.destinationAirport}: EC=${loadedKits.economy}, BC=${loadedKits.business}, PE=${loadedKits.premiumEconomy}, FC=${loadedKits.first}`);
+      }
 
       loads.push({
         flightId: flight.flightId,
@@ -315,6 +364,17 @@ export class GameState {
     for (const inflight of this.inFlightKits.values()) {
       if (inflight.destinationAirport === airportCode) {
         total += inflight.kits[kitClass];
+      }
+    }
+    return total;
+  }
+
+  // Get total kits of a class currently processing at a specific airport
+  private getProcessingKitsAtAirport(airportCode: string, kitClass: keyof PerClassAmount): number {
+    let total = 0;
+    for (const processing of this.processingKits) {
+      if (processing.airportCode === airportCode) {
+        total += processing.kits[kitClass];
       }
     }
     return total;
@@ -364,12 +424,115 @@ export class GameState {
     return result;
   }
 
-  // Calculate purchase order for hub - DISABLED
-  // Testing showed purchasing increases costs more than it reduces penalties
+  // Track total purchased kits to prevent cost explosion
+  private totalPurchased: PerClassAmount = { first: 0, business: 0, premiumEconomy: 0, economy: 0 };
+
+  // Calculate purchase order for hub - ALL KIT CLASSES
+  // Strategy: Buy kits aggressively for ALL classes to avoid END_OF_GAME_UNFULFILLED penalties
+  // The $9B penalty for unfulfilled flights is FAR worse than kit purchase costs
   calculatePurchaseOrder(): PerClassAmount | undefined {
-    // Return undefined to disable purchasing completely
-    // The hub's initial stock + returned kits should be sufficient
-    return undefined;
+    // 1. Time constraint - stop purchasing at day 29 (last day)
+    if (this.currentDay >= 29) {
+      return undefined;
+    }
+
+    // 2. Get hub stock
+    const hubStock = this.airportStocks.get('HUB1');
+    if (!hubStock) return undefined;
+
+    const order: PerClassAmount = { first: 0, business: 0, premiumEconomy: 0, economy: 0 };
+    let anyPurchase = false;
+
+    // 3. Calculate for each kit class
+    for (const kitClass of KIT_CLASSES) {
+      const currentStock = hubStock[kitClass];
+      const inFlight = this.getInFlightKitsToAirport('HUB1', kitClass);
+      const processing = this.getProcessingKitsAtAirport('HUB1', kitClass);
+      const totalExpected = currentStock + inFlight + processing;
+
+      // Thresholds per class (economy needs more, first class needs less)
+      const thresholds: Record<string, number> = {
+        first: 2000,
+        business: 8000,
+        premiumEconomy: 4000,
+        economy: 40000
+      };
+
+      // API LIMITS from Java PerClassAmount.java:
+      // first: max 42000, business: max 42000, premiumEconomy: max 1000, economy: max 42000
+      const apiMaxPerRequest: Record<string, number> = {
+        first: 42000,
+        business: 42000,
+        premiumEconomy: 1000,  // STRICT API LIMIT!
+        economy: 42000
+      };
+
+      const maxPurchase: Record<string, number> = {
+        first: 50000,
+        business: 100000,
+        premiumEconomy: 30000,  // Lower because of API limit per request
+        economy: 200000
+      };
+
+      const emergencyThreshold: Record<string, number> = {
+        first: 500,
+        business: 1500,
+        premiumEconomy: 500,  // Lower threshold since we can only buy 1000 per request
+        economy: 5000
+      };
+
+      // EMERGENCY MODE: If stock is critically low, purchase immediately
+      if (currentStock < emergencyThreshold[kitClass]) {
+        const maxToBuy = maxPurchase[kitClass] - this.totalPurchased[kitClass];
+        // Respect API limits!
+        const emergencyAmount = Math.min(thresholds[kitClass], maxToBuy, apiMaxPerRequest[kitClass]);
+        if (emergencyAmount > 0) {
+          order[kitClass] = emergencyAmount;
+          this.totalPurchased[kitClass] += emergencyAmount;
+          anyPurchase = true;
+          console.log(`[PURCHASE EMERGENCY] Day ${this.currentDay} Hour ${this.currentHour}: Ordering ${emergencyAmount} ${kitClass} kits (stock was ${currentStock})`);
+        }
+        continue;
+      }
+
+      // Regular purchasing: every 6 hours when below threshold
+      if (this.currentHour % 6 !== 0) {
+        continue;
+      }
+
+      if (totalExpected >= thresholds[kitClass]) {
+        continue;
+      }
+
+      // Calculate 72h demand forecast
+      const demand72h = this.calculateUpcomingDemandForAirport('HUB1', 72, kitClass);
+
+      // Calculate deficit with 1.3x buffer
+      const deficit = Math.max(0, (demand72h * 1.3) - totalExpected);
+
+      // Purchase - respect API limits!
+      const maxToBuy = maxPurchase[kitClass] - this.totalPurchased[kitClass];
+      const maxPerOrder: Record<string, number> = {
+        first: 1000,
+        business: 3000,
+        premiumEconomy: 1000,  // API limit is 1000!
+        economy: 5000
+      };
+      const toPurchase = Math.min(deficit, maxPerOrder[kitClass], maxToBuy, apiMaxPerRequest[kitClass]);
+
+      if (toPurchase > 100) {
+        order[kitClass] = toPurchase;
+        this.totalPurchased[kitClass] += toPurchase;
+        anyPurchase = true;
+        console.log(`[PURCHASE] Day ${this.currentDay} Hour ${this.currentHour}: Ordering ${toPurchase} ${kitClass} kits (expected: ${totalExpected}, demand72h: ${demand72h})`);
+      }
+    }
+
+    if (!anyPurchase) {
+      return undefined;
+    }
+
+    return order;
   }
 
   // Calculate upcoming demand for a specific airport and kit class

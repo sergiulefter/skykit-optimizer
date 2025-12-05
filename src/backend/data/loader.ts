@@ -37,16 +37,16 @@ export function loadAircraftTypes(): Map<string, Aircraft> {
     const aircraft: Aircraft = {
       typeCode: row.type_code,
       seats: {
-        first: parseInt(row.fc_seats) || 0,
-        business: parseInt(row.bc_seats) || 0,
-        premiumEconomy: parseInt(row.pe_seats) || 0,
-        economy: parseInt(row.ec_seats) || 0
+        first: parseInt(row.first_class_seats) || 0,
+        business: parseInt(row.business_seats) || 0,
+        premiumEconomy: parseInt(row.premium_economy_seats) || 0,
+        economy: parseInt(row.economy_seats) || 0
       },
       kitCapacity: {
-        first: parseInt(row.fc_kits_cap) || 0,
-        business: parseInt(row.bc_kits_cap) || 0,
-        premiumEconomy: parseInt(row.pe_kits_cap) || 0,
-        economy: parseInt(row.ec_kits_cap) || 0
+        first: parseInt(row.first_class_kits_capacity) || 0,
+        business: parseInt(row.business_kits_capacity) || 0,
+        premiumEconomy: parseInt(row.premium_economy_kits_capacity) || 0,
+        economy: parseInt(row.economy_kits_capacity) || 0
       },
       costPerKgPerKm: parseFloat(row.cost_per_kg_per_km) || 0
     };
