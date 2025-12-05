@@ -24,7 +24,7 @@
 :root[data-theme='light'] {
   --color-bg: #f4f6fb;
   --color-bg-alt: #eff2fb;
-  --color-panel: #ffffff;
+  --color-panel: #ecdfdf;
   --color-panel-dark: #dfe7fb;
   --color-text: #1a2238;
   --color-text-muted: rgba(26, 34, 56, 0.65);
@@ -46,7 +46,7 @@
 /* Base styles */
 body {
   @apply bg-bg text-text min-h-screen;
-  font-family: var(--font-family-sans);
+  font-family: var(--font-sans);
 }
 
 #root {
