@@ -6,7 +6,6 @@ import { InventoryPage } from './pages/InventoryPage';
 import { NetworkPage } from './pages/NetworkPage';
 import { EventsPage } from './pages/EventsPage';
 import { AboutPage } from './pages/AboutPage';
-import {ContactUsPage} from "./pages/ContactUsPage";
 
 function App() {
   const game = useGameState(1000);
