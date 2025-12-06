@@ -176,7 +176,7 @@ export class FlightLoader {
     // This is dataset-agnostic because:
     // - Baseline 0.70 is economically derived (ratio ~ 1.0 means load most)
     // - Reduction only happens when capacity data shows danger
-    let loadFactor = 0.70;  // Baseline - 0.72 tested but increased costs more than reduced penalties
+    let loadFactor = 0.70;  // Baseline - 0.72 tested, reduced unfulfilled by $6.5M but increased costs equally
 
     if (occupancyRatio > 0.80) {
       // Danger zone: reduce more aggressively
@@ -643,6 +643,8 @@ export class FlightLoader {
       roomCheckThreshold = 0.30;
       maxExtraPercent = 0.02;  // Reverted from 0.04
     }
+    // Note: First/Business boost tested (0.80/0.15/0.08) - reduced unfulfilled by $0.8M
+    // but increased transport costs by $1.2M → net loss. Reverted to defaults.
 
     // Hard stop if spoke is already at saturation threshold
     if (totalAtDest > destCapacity * saturationThreshold) {
