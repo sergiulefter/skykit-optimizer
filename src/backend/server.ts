@@ -8,7 +8,8 @@ import {
   FlightInfo,
   PenaltyInfo,
   GameEvent,
-  GameStats
+  GameStats,
+  PenaltiesByDay
 } from '../shared/types';
 
 const PORT = 3001;
@@ -26,6 +27,7 @@ let currentStats: GameStats = {
 };
 let recentEvents: GameEvent[] = [];
 let recentPenalties: PenaltyInfo[] = [];
+let penaltiesByDay: PenaltiesByDay = {};  // ALL penalties grouped by day
 let isGameRunning = false;
 let isGameComplete = false;
 let isGameStarting = false;  // True while eval-platform is starting
@@ -55,7 +57,8 @@ app.get('/api/state', (_req: Request, res: Response) => {
       airports: [],
       activeFlights: [],
       events: recentEvents.slice(-50),
-      recentPenalties: []
+      recentPenalties: [],
+      penaltiesByDay: penaltiesByDay
     } as GameStateSnapshot);
     return;
   }
@@ -71,7 +74,8 @@ app.get('/api/state', (_req: Request, res: Response) => {
     airports: getAirportStocks(),
     activeFlights: getActiveFlights(),
     events: recentEvents.slice(-50),
-    recentPenalties: recentPenalties.slice(-20)
+    recentPenalties: recentPenalties.slice(-20),
+    penaltiesByDay: penaltiesByDay
   };
 
   res.json(snapshot);
@@ -221,10 +225,17 @@ export function addEvent(event: GameEvent): void {
 
 export function addPenalty(penalty: PenaltyInfo): void {
   recentPenalties.push(penalty);
-  // Keep only last 50 penalties in memory
+  // Keep only last 50 penalties in memory for recentPenalties
   if (recentPenalties.length > 50) {
     recentPenalties = recentPenalties.slice(-50);
   }
+
+  // Also store in penaltiesByDay (ALL penalties, no limit)
+  const day = penalty.issuedDay;
+  if (!penaltiesByDay[day]) {
+    penaltiesByDay[day] = [];
+  }
+  penaltiesByDay[day].push(penalty);
 }
 
 export function setGameRunning(running: boolean): void {
@@ -238,6 +249,7 @@ export function setGameComplete(complete: boolean): void {
 export function clearState(): void {
   recentEvents = [];
   recentPenalties = [];
+  penaltiesByDay = {};  // Reset all penalties by day
   currentStats = {
     totalCost: 0,
     transportCost: 0,

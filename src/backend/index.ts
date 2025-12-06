@@ -118,6 +118,12 @@ async function runGame() {
 
         // Play the round
         const response = await client.playRound(request);
+
+        // CRITICAL: Apply purchased kits to local stock immediately
+        // The server adds them instantly, so we must sync our local state
+        if (purchaseOrder) {
+          gameState.applyPurchasedKits(purchaseOrder);
+        }
         lastResponse = response;
         previousResponse = response;
 
@@ -133,7 +139,7 @@ async function runGame() {
         // Log progress every day at midnight
         if (hour === 0) {
           const costDelta = response.totalCost - lastCost;
-          console.log(`[DAY ${day.toString().padStart(2, '0')}] Cost: ${response.totalCost.toFixed(2)} (+${costDelta.toFixed(2)}) | Flights: ${gameState.knownFlights.size} | Departing: ${gameState.flightsReadyToDepart.length} | Loads sent: ${flightLoads.length}`);
+          console.log(`[DAY ${day.toString().padStart(2, '0')}] Cost: ${response.totalCost.toFixed(2)} (+${costDelta.toFixed(2)}) | Flights: ${gameState.knownFlights.size} | Departing: ${gameState.getFlightsReadyToDepart().length} | Loads sent: ${flightLoads.length}`);
           lastCost = response.totalCost;
         }
 
