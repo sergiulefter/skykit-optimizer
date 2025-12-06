@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SimControls } from '../components/SimControls';
 import { PageShell } from '../components/PageShell';
@@ -51,6 +52,8 @@ const formatCost = (value: number): string => {
 export function HomePage({ game, theme, onToggleTheme, language, onToggleLanguage }: HomePageProps) {
   const { state, isLoading, error, isConnected, startGame } = game;
   const t = <T,>(values: { en: T; ro: T }) => pickLanguage(language, values);
+  const [isCompactNav, setIsCompactNav] = useState(false);
+  const [isNavOpen, setIsNavOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -159,6 +162,23 @@ export function HomePage({ game, theme, onToggleTheme, language, onToggleLanguag
   const navButtonLight = 'border border-border text-text-muted hover:text-text hover:border-accent';
   const navButtonClass = `${navButtonBase} ${theme === 'dark' ? navButtonDark : navButtonLight}`;
 
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const media = window.matchMedia('(max-width: 1065px)');
+    const update = () => setIsCompactNav(media.matches);
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    if (!isCompactNav && isNavOpen) {
+      setIsNavOpen(false);
+    }
+  }, [isCompactNav, isNavOpen]);
+
+  const toggleNav = () => setIsNavOpen(prev => !prev);
+
   return (
     <PageShell>
       <SiteHeader
@@ -169,17 +189,56 @@ export function HomePage({ game, theme, onToggleTheme, language, onToggleLanguag
         onToggleLanguage={onToggleLanguage}
       />
 
-      <nav className="flex flex-wrap gap-3 mb-8">
-        {navLinks.map(link => (
-          <Link
-            key={link.to}
-            to={link.to}
-            className={navButtonClass}
+      {!isCompactNav ? (
+        <nav className="flex flex-wrap gap-3 mb-8">
+          {navLinks.map(link => (
+            <Link
+              key={link.to}
+              to={link.to}
+              className={navButtonClass}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+      ) : (
+        <div className="mb-8 w-full">
+          <button
+            type="button"
+            onClick={toggleNav}
+            aria-expanded={isNavOpen}
+            aria-controls="dashboard-mobile-nav"
+            className="flex w-full items-center justify-between rounded-[28px] border border-border/70 bg-panel/70 px-5 py-3 text-xs font-semibold uppercase tracking-[0.25em] text-text hover:border-accent transition"
           >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
+            <span>{isNavOpen ? t({ en: 'Close navigation', ro: 'Închide navigarea' }) : t({ en: 'Open navigation', ro: 'Deschide navigarea' })}</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-panel-dark/60">
+              <span className="flex flex-col gap-1.5">
+                <span className={`block h-0.5 w-6 rounded-full bg-text transition-transform ${isNavOpen ? 'translate-y-[5px] rotate-45' : ''}`} />
+                <span className={`block h-0.5 w-6 rounded-full bg-text transition-opacity ${isNavOpen ? 'opacity-0' : 'opacity-100'}`} />
+                <span className={`block h-0.5 w-6 rounded-full bg-text transition-transform ${isNavOpen ? '-translate-y-[5px] -rotate-45' : ''}`} />
+              </span>
+            </span>
+          </button>
+          {isNavOpen && (
+            <div
+              id="dashboard-mobile-nav"
+              className="mt-4 flex flex-col gap-3 rounded-[28px] border border-border/70 bg-gradient-to-br from-panel-dark/80 to-panel/80 p-4 shadow-[0_25px_60px_rgba(5,6,10,0.5)]"
+            >
+              {navLinks.map(link => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setIsNavOpen(false)}
+                  className="flex items-center justify-between rounded-[22px] border border-border/60 px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-text hover:border-accent transition"
+                >
+                  <span>{link.label}</span>
+                  <span className="text-xs text-text-muted">{'>'}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <section className="relative overflow-hidden rounded-[34px] border border-border/70 bg-gradient-to-br from-bg-alt/70 via-panel/80 to-panel-dark/80 p-6 sm:p-10 mb-12 dashboard-aurora">
         <div className="pointer-events-none absolute inset-0 opacity-40 grid-overlay animate-float" />
