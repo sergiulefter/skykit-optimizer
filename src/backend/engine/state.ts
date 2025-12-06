@@ -38,6 +38,9 @@ export class GameState {
   // Known flights (from SCHEDULED/CHECKED_IN events)
   knownFlights: Map<string, FlightEvent> = new Map();
 
+  // FIX 25: Track flights we've already loaded to avoid duplicates and catch missed flights
+  private loadedFlights: Set<string> = new Set();
+
   // Flights that are CHECKED_IN and ready to depart this hour
   private flightsReadyToDepart: FlightEvent[] = [];
 
@@ -83,13 +86,25 @@ export class GameState {
     // Process any kits that finished processing and are now available
     this.inventoryManager.processReadyKits(day, hour);
 
-    // Find all flights departing at this exact time
+    // Find all flights departing at this exact time OR missed flights
     this.flightsReadyToDepart = [];
+    const currentTime = day * 24 + hour;
+
     for (const flight of this.knownFlights.values()) {
-      if ((flight.eventType === 'CHECKED_IN' || flight.eventType === 'SCHEDULED') &&
-          flight.departure.day === day &&
-          flight.departure.hour === hour) {
-        this.flightsReadyToDepart.push(flight);
+      if (flight.eventType === 'CHECKED_IN' || flight.eventType === 'SCHEDULED') {
+        // ORIGINAL: exact time match
+        const isDepartingNow = flight.departure.day === day && flight.departure.hour === hour;
+
+        // FIX 25: Include "missed" flights - zboruri cu departure în trecut dar nevăzute încă
+        const departureTime = flight.departure.day * 24 + flight.departure.hour;
+        const wasMissed = departureTime < currentTime && !this.loadedFlights.has(flight.flightId);
+
+        if (isDepartingNow || wasMissed) {
+          if (wasMissed) {
+            console.log(`[FIX 25] Found missed flight ${flight.flightNumber} (departure D${flight.departure.day}H${flight.departure.hour}, now D${day}H${hour})`);
+          }
+          this.flightsReadyToDepart.push(flight);
+        }
       }
     }
   }
@@ -284,10 +299,49 @@ export class GameState {
   }
 
   /**
+   * Get cumulative purchase cost (acquisition cost for bought kits)
+   */
+  getPurchaseCost(): number {
+    return this.purchasingManager.getTotalPurchaseCost();
+  }
+
+  /**
    * Reset cost tracking (useful for new game)
    */
   resetCosts(): void {
     this.inventoryManager.resetCosts();
+  }
+
+  // ==================== FIX 25: FLIGHT LOAD TRACKING ====================
+
+  /**
+   * Mark a flight as loaded (prevents re-processing)
+   */
+  markFlightAsLoaded(flightId: string): void {
+    this.loadedFlights.add(flightId);
+  }
+
+  /**
+   * Mark multiple flights as loaded
+   */
+  markFlightsAsLoaded(flightIds: string[]): void {
+    for (const id of flightIds) {
+      this.loadedFlights.add(id);
+    }
+  }
+
+  /**
+   * Check if a flight has been loaded
+   */
+  isFlightLoaded(flightId: string): boolean {
+    return this.loadedFlights.has(flightId);
+  }
+
+  /**
+   * Get count of loaded flights
+   */
+  getLoadedFlightsCount(): number {
+    return this.loadedFlights.size;
   }
 
   // ==================== DEBUG ====================

@@ -59,6 +59,9 @@ export interface GameStats {
   penaltyCost: number;
   totalPenalties: number;
   roundsCompleted: number;
+  // FIX 25: Comparable score (excluding END_OF_GAME_UNFULFILLED_FLIGHT_KITS)
+  comparableScore: number;
+  endOfGameFlightPenalty: number;
 }
 
 export interface GameStateSnapshot {

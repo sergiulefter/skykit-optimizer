@@ -331,6 +331,9 @@ async function runGame() {
         const flightLoads = gameState.calculateFlightLoads();
         const purchaseOrder = gameState.calculatePurchaseOrder();
 
+        // FIX 25: Mark all flights as loaded to prevent re-processing
+        gameState.markFlightsAsLoaded(flightLoads.map(fl => fl.flightId));
+
         const request: HourRequestDto = {
           day,
           hour,
@@ -351,13 +354,25 @@ async function runGame() {
 
         // Update stats for frontend
         const roundNum = day * 24 + hour + 1;
+        // Calculate END_OF_GAME_UNFULFILLED_FLIGHT_KITS penalty (same for all participants)
+        let endOfGameFlightPenalty = 0;
+        for (const p of response.penalties) {
+          if (p.code === 'END_OF_GAME_UNFULFILLED_FLIGHT_KITS') {
+            endOfGameFlightPenalty += p.penalty;
+          }
+        }
+        const comparableScore = response.totalCost - endOfGameFlightPenalty;
+
         updateStats({
           totalCost: response.totalCost,
           transportCost: gameState.getTransportCost(),
           processingCost: gameState.getProcessingCost(),
+          purchaseCost: gameState.getPurchaseCost(),
           penaltyCost: response.penalties.reduce((sum, p) => sum + p.penalty, 0),
           totalPenalties: response.penalties.length,
-          roundsCompleted: roundNum
+          roundsCompleted: roundNum,
+          comparableScore,
+          endOfGameFlightPenalty
         });
 
         // Log progress every day at midnight
@@ -417,6 +432,10 @@ async function runGame() {
       gameState.processFlightUpdates(previousResponse.flightUpdates);
     }
 
+    // FIX 25: Log flight loading stats
+    console.log(`\n[FIX 25] Total flights loaded: ${gameState.getLoadedFlightsCount()}`);
+    console.log(`[FIX 25] Total known flights: ${gameState.knownFlights.size}`);
+
     // 3. End session
     console.log('\n[GAME] Ending session...');
     const finalResult = await client.endSession();
@@ -425,13 +444,30 @@ async function runGame() {
 
     const result = finalResult || lastResponse;
 
+    // Calculate comparable score (excluding END_OF_GAME_UNFULFILLED_FLIGHT_KITS which is same for everyone)
+    let endOfGameFlightPenalty = 0;
+    if (result && result.penalties.length > 0) {
+      for (const penalty of result.penalties) {
+        if (penalty.code === 'END_OF_GAME_UNFULFILLED_FLIGHT_KITS') {
+          endOfGameFlightPenalty += penalty.penalty;
+        }
+      }
+    }
+    const comparableScore = (result?.totalCost || 0) - endOfGameFlightPenalty;
+
     console.log('\n===========================================');
     console.log(`       FINAL SCORE: ${result?.totalCost.toFixed(2) || 'N/A'}`);
+    if (endOfGameFlightPenalty > 0) {
+      console.log(`  - END_OF_GAME flights (ignorat): $${(endOfGameFlightPenalty / 1000000).toFixed(2)}M`);
+      console.log(`  - SCOR COMPARABIL: $${(comparableScore / 1000000).toFixed(2)}M`);
+    }
     console.log('===========================================\n');
 
     addEvent({
       type: 'flight',
-      text: `Game completed! Final score: ${result?.totalCost.toFixed(2) || 'N/A'}`,
+      text: endOfGameFlightPenalty > 0
+        ? `Game completed! Score: $${(comparableScore / 1000000).toFixed(2)}M (total: $${((result?.totalCost || 0) / 1000000).toFixed(2)}M)`
+        : `Game completed! Final score: ${result?.totalCost.toFixed(2) || 'N/A'}`,
       timestamp: new Date().toISOString()
     });
 
@@ -449,7 +485,8 @@ async function runGame() {
       }
 
       for (const [code, data] of Object.entries(penaltyCounts)) {
-        console.log(`  - ${code}: ${data.count}x = ${data.total.toFixed(2)}`);
+        const isIgnored = code === 'END_OF_GAME_UNFULFILLED_FLIGHT_KITS' ? ' (IGNORAT - same for all)' : '';
+        console.log(`  - ${code}: ${data.count}x = ${data.total.toFixed(2)}${isIgnored}`);
       }
     }
 

@@ -117,7 +117,11 @@ export class FlightLoader {
 
     if (!originStock || !aircraft) {
       console.warn(`[FLIGHT_LOADER] Missing data for flight ${flight.flightNumber} from ${flight.originAirport}`);
-      return null;
+      // FIX 24: ALWAYS return a load, even with 0 kits - otherwise server applies END_OF_GAME_UNFULFILLED_FLIGHT_KITS penalty!
+      return {
+        flightId: flight.flightId,
+        loadedKits: { first: 0, business: 0, premiumEconomy: 0, economy: 0 }
+      };
     }
 
     const loadedKits: PerClassAmount = {

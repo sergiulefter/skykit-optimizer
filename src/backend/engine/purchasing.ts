@@ -13,6 +13,14 @@ import { PurchaseConfig, DEFAULT_PURCHASE_CONFIG } from './types';
 import { InventoryManager } from './inventory';
 import { DemandForecaster } from './forecasting';
 
+// Kit costs from hackitall2025 API specification
+const KIT_COSTS: Record<keyof PerClassAmount, number> = {
+  first: 200,           // First Class: $200/kit
+  business: 150,        // Business: $150/kit
+  premiumEconomy: 100,  // Premium Economy: $100/kit
+  economy: 50           // Economy: $50/kit
+};
+
 export class PurchasingManager {
   private inventoryManager: InventoryManager;
   private demandForecaster: DemandForecaster;
@@ -133,6 +141,31 @@ export class PurchasingManager {
     const apiLimit = this.config.apiLimits[kitClass];
     const maxPerOrder = this.config.maxPerOrder[kitClass];
 
+    // FIX 23: END-GAME BURST PURCHASING
+    // Buy aggressively before lead time deadline to prevent end-game UNFULFILLED spike
+    // Lead times: First=48h, Business=36h, PE=24h, Economy=12h
+    const hoursRemaining = (29 - currentDay) * 24 + (23 - currentHour);
+    const LEAD_TIMES: Record<string, number> = {
+      first: 48,
+      business: 36,
+      premiumEconomy: 24,
+      economy: 12
+    };
+
+    const leadTime = LEAD_TIMES[kitClass];
+    // Burst window: when we're within 12 hours of the lead time deadline
+    const isNearDeadline = hoursRemaining >= leadTime && hoursRemaining <= leadTime + 12;
+
+    if (isNearDeadline) {
+      const maxToBuy = maxTotalPurchase - this.totalPurchased[kitClass];
+      const burstAmount = Math.min(maxPerOrder * 2, maxToBuy, apiLimit, maxRoom); // Double the normal order
+
+      if (burstAmount > 0) {
+        console.log(`[PURCHASE END-GAME BURST] Day ${currentDay} Hour ${currentHour}: Ordering ${burstAmount} ${kitClass} kits (${hoursRemaining}h remaining, lead time ${leadTime}h)`);
+        return burstAmount;
+      }
+    }
+
     // EARLY-GAME (Day 0-2): Aggressive purchasing to build up stock BEFORE flights depart
     // This prevents NEGATIVE_INVENTORY penalties which cost $5342/kit!
     const isEarlyGame = currentDay <= 2;
@@ -223,6 +256,17 @@ export class PurchasingManager {
    */
   getTotalPurchased(): PerClassAmount {
     return { ...this.totalPurchased };
+  }
+
+  /**
+   * Get total acquisition cost (purchase cost) for all kits bought
+   * Formula: Σ(k) (kitsPurchased(k) × cost(k))
+   */
+  getTotalPurchaseCost(): number {
+    return this.totalPurchased.first * KIT_COSTS.first
+         + this.totalPurchased.business * KIT_COSTS.business
+         + this.totalPurchased.premiumEconomy * KIT_COSTS.premiumEconomy
+         + this.totalPurchased.economy * KIT_COSTS.economy;
   }
 
   /**

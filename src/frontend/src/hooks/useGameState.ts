@@ -62,6 +62,8 @@ export interface GameStats {
   penaltyCost: number;
   totalPenalties: number;
   roundsCompleted: number;
+  comparableScore: number;
+  endOfGameFlightPenalty: number;
 }
 
 export interface GameStateSnapshot {

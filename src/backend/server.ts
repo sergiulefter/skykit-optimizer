@@ -23,7 +23,9 @@ let currentStats: GameStats = {
   purchaseCost: 0,
   penaltyCost: 0,
   totalPenalties: 0,
-  roundsCompleted: 0
+  roundsCompleted: 0,
+  comparableScore: 0,
+  endOfGameFlightPenalty: 0
 };
 let recentEvents: GameEvent[] = [];
 let recentPenalties: PenaltyInfo[] = [];
@@ -257,7 +259,9 @@ export function clearState(): void {
     purchaseCost: 0,
     penaltyCost: 0,
     totalPenalties: 0,
-    roundsCompleted: 0
+    roundsCompleted: 0,
+    comparableScore: 0,
+    endOfGameFlightPenalty: 0
   };
   isGameRunning = false;
   isGameComplete = false;

@@ -69,10 +69,10 @@ export interface LoadingConfig {
 // Default configurations
 export const DEFAULT_PURCHASE_CONFIG: PurchaseConfig = {
   thresholds: {
-    first: 1200,        // FIX 8: Was 1000, increased to reduce UNFULFILLED (FIX 4 prevents overflow)
+    first: 1800,        // FIX 23: Was 1200, increased to reduce UNFULFILLED
     business: 6000,
-    premiumEconomy: 2500,  // FIX 8: Was 2000, increased to reduce UNFULFILLED
-    economy: 50000
+    premiumEconomy: 4000,  // FIX 23: Was 2500, increased to reduce UNFULFILLED
+    economy: 70000         // FIX 23: Was 50000, increased to reduce UNFULFILLED (51% of penalties!)
   },
   emergencyThresholds: {
     first: 400,         // FIX 8: Was 300, increased
@@ -81,10 +81,10 @@ export const DEFAULT_PURCHASE_CONFIG: PurchaseConfig = {
     economy: 10000
   },
   maxPerOrder: {
-    first: 700,         // FIX 8: Was 500, increased to reduce UNFULFILLED
+    first: 1000,        // FIX 23: Was 700, increased to reduce UNFULFILLED
     business: 3000,
-    premiumEconomy: 700,   // FIX 8: Was 500, increased to reduce UNFULFILLED
-    economy: 10000
+    premiumEconomy: 1000,  // FIX 23: Was 700, increased to reduce UNFULFILLED
+    economy: 15000         // FIX 23: Was 10000, increased to reduce UNFULFILLED
   },
   maxTotalPurchase: {
     first: 50000,
