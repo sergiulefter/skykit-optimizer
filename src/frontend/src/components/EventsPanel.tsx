@@ -60,24 +60,26 @@ export function EventsPanel({ events, penalties, penaltiesByDay }: EventsPanelPr
           Penalties ({totalPenaltiesCount})
         </button>
       </div>
-      <div className="p-5 overflow-y-auto max-h-[500px]">
+      <div className="overflow-y-auto max-h-[500px] px-5 pb-5 pt-0">
         {activeTab === 'events' ? (
-          events.length === 0 ? (
-            <p className="text-text-muted text-sm">No events yet. Start the game to see updates.</p>
-          ) : (
-            events.slice().reverse().map((event, index) => {
-              const iconType = event.type as keyof typeof badgeStyles;
-              const badgeClass = badgeStyles[iconType] || badgeStyles.flight;
-              return (
-                <div key={index} className="flex items-start gap-3 py-3 border-b border-white/5 last:border-b-0">
-                  <span className={`${badgeStyles.base} ${badgeClass}`}>
-                    {eventIcons[event.type] || '✈'}
-                  </span>
-                  <p className="m-0 text-sm">{event.text}</p>
-                </div>
-              );
-            })
-          )
+          <div className="pt-5">
+            {events.length === 0 ? (
+              <p className="text-text-muted text-sm">No events yet. Start the game to see updates.</p>
+            ) : (
+              events.slice().reverse().map((event, index) => {
+                const iconType = event.type as keyof typeof badgeStyles;
+                const badgeClass = badgeStyles[iconType] || badgeStyles.flight;
+                return (
+                  <div key={index} className="flex items-start gap-3 py-3 border-b border-white/5 last:border-b-0">
+                    <span className={`${badgeStyles.base} ${badgeClass}`}>
+                      {eventIcons[event.type] || '✈'}
+                    </span>
+                    <p className="m-0 text-sm">{event.text}</p>
+                  </div>
+                );
+              })
+            )}
+          </div>
         ) : penaltiesByDay && sortedDays.length > 0 ? (
           // Show penalties grouped by day
           sortedDays.map(day => {
@@ -116,23 +118,27 @@ export function EventsPanel({ events, penalties, penaltiesByDay }: EventsPanelPr
             );
           })
         ) : penalties.length === 0 ? (
-          <p className="text-text-muted text-sm">No penalties incurred yet.</p>
+          <div className="pt-5">
+            <p className="text-text-muted text-sm">No penalties incurred yet.</p>
+          </div>
         ) : (
           // Fallback to simple list if penaltiesByDay not available
-          penalties.slice().reverse().map((penalty, index) => (
-            <div key={index} className="flex items-start gap-3 py-3 border-b border-white/5 last:border-b-0">
-              <span className={`${badgeStyles.base} ${badgeStyles.danger}`}>$</span>
-              <div>
-                <p className="m-0 text-sm">
-                  <strong className="text-danger">${penalty.amount.toFixed(2)}</strong>
-                  {' - '}{penalty.code}
-                </p>
-                <p className="text-text-muted text-xs mt-1 m-0">
-                  {penalty.reason}
-                </p>
+          <div className="pt-5">
+            {penalties.slice().reverse().map((penalty, index) => (
+              <div key={index} className="flex items-start gap-3 py-3 border-b border-white/5 last:border-b-0">
+                <span className={`${badgeStyles.base} ${badgeStyles.danger}`}>$</span>
+                <div>
+                  <p className="m-0 text-sm">
+                    <strong className="text-danger">${penalty.amount.toFixed(2)}</strong>
+                    {' - '}{penalty.code}
+                  </p>
+                  <p className="text-text-muted text-xs mt-1 m-0">
+                    {penalty.reason}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))
+            ))}
+          </div>
         )}
       </div>
     </div>
