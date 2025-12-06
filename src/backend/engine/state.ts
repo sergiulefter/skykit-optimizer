@@ -289,4 +289,18 @@ export class GameState {
   getAirport(airportCode: string): Airport | undefined {
     return this.inventoryManager.getAirport(airportCode);
   }
+
+  /**
+   * Get in-flight kits to a specific airport (for debugging)
+   */
+  getInFlightKitsToAirport(airportCode: string, kitClass: keyof PerClassAmount): number {
+    return this.inventoryManager.getInFlightKitsToAirport(airportCode, kitClass);
+  }
+
+  /**
+   * Get processing kits at a specific airport (for debugging)
+   */
+  getProcessingKitsAtAirport(airportCode: string, kitClass: keyof PerClassAmount): number {
+    return this.inventoryManager.getProcessingKitsAtAirport(airportCode, kitClass);
+  }
 }

@@ -49,11 +49,18 @@ export class PurchasingManager {
     currentHour: number,
     knownFlights: Map<string, FlightEvent>
   ): PerClassAmount | undefined {
-    // 1. Time constraint - stop purchasing at day 27 (2 days before end)
-    // This gives time to use the kits and prevents HUB1 overflow at end-game
-    if (currentDay >= 27) {
-      return undefined;
-    }
+    // FIX 10: Lead-time aware purchasing cutoffs
+    // Kit lead times: First=48h, Business=36h, PE=24h, Economy=12h
+    // Game ends at Day 29, Hour 23, so we need kits to arrive before then
+    const hoursRemaining = (29 - currentDay) * 24 + (23 - currentHour);
+
+    // Lead times in hours for each class
+    const LEAD_TIMES = {
+      first: 48,        // 2 days
+      business: 36,     // 1.5 days
+      premiumEconomy: 24, // 1 day
+      economy: 12       // 0.5 days
+    };
 
     // 2. Get hub stock AND capacity
     const hubStock = this.inventoryManager.getStock('HUB1');
@@ -64,6 +71,12 @@ export class PurchasingManager {
 
     // 3. Calculate for each kit class
     for (const kitClass of KIT_CLASSES) {
+      // FIX 10: Skip if not enough time for kit to arrive before game ends
+      const leadTime = LEAD_TIMES[kitClass];
+      if (hoursRemaining < leadTime) {
+        continue;  // Kit won't arrive in time
+      }
+
       const purchaseAmount = this.calculatePurchaseForClass(
         kitClass,
         hubStock,

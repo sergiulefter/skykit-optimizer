@@ -72,6 +72,23 @@ function logPenalty(penalty: PenaltyDto, gameState: GameState) {
     if (airport) {
       entry.airportCapacity = { ...airport.capacity };
     }
+    // FIX 11: Add in-flight and processing kits for debugging
+    if (penalty.code === 'INVENTORY_EXCEEDS_CAPACITY') {
+      const inFlight = {
+        first: gameState.getInFlightKitsToAirport(parsed.airportCode, 'first'),
+        business: gameState.getInFlightKitsToAirport(parsed.airportCode, 'business'),
+        premiumEconomy: gameState.getInFlightKitsToAirport(parsed.airportCode, 'premiumEconomy'),
+        economy: gameState.getInFlightKitsToAirport(parsed.airportCode, 'economy')
+      };
+      const processing = {
+        first: gameState.getProcessingKitsAtAirport(parsed.airportCode, 'first'),
+        business: gameState.getProcessingKitsAtAirport(parsed.airportCode, 'business'),
+        premiumEconomy: gameState.getProcessingKitsAtAirport(parsed.airportCode, 'premiumEconomy'),
+        economy: gameState.getProcessingKitsAtAirport(parsed.airportCode, 'economy')
+      };
+      (entry as any).inFlightToAirport = inFlight;
+      (entry as any).processingAtAirport = processing;
+    }
   }
 
   penaltyLogs.push(entry);
@@ -84,70 +101,68 @@ function writePenaltyLogs() {
   }
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const logFile = path.join(logDir, `penalties-${timestamp}.json`);
+  const logFile = path.join(logDir, `overflow-${timestamp}.json`);
 
-  // Group by type for summary
-  const summary: Record<string, { count: number; total: number; byDay: Record<number, number> }> = {};
-  for (const entry of penaltyLogs) {
-    if (!summary[entry.code]) {
-      summary[entry.code] = { count: 0, total: 0, byDay: {} };
+  // FOCUS: Only INVENTORY_EXCEEDS_CAPACITY
+  const overflowPenalties = penaltyLogs.filter(p => p.code === 'INVENTORY_EXCEEDS_CAPACITY');
+
+  // Group by airport
+  const byAirport: Record<string, any[]> = {};
+  for (const entry of overflowPenalties) {
+    const airport = entry.airportCode || 'UNKNOWN';
+    if (!byAirport[airport]) {
+      byAirport[airport] = [];
     }
-    summary[entry.code].count++;
-    summary[entry.code].total += entry.amount;
-    summary[entry.code].byDay[entry.day] = (summary[entry.code].byDay[entry.day] || 0) + 1;
+    byAirport[airport].push({
+      day: entry.day,
+      hour: entry.hour,
+      kitClass: entry.kitClass,
+      kitsOver: entry.kitsOverCapacity,
+      stock: entry.airportStock,
+      capacity: entry.airportCapacity,
+      inFlight: (entry as any).inFlightToAirport,
+      processing: (entry as any).processingAtAirport,
+      penalty: entry.amount
+    });
   }
 
-  // Group INVENTORY_EXCEEDS_CAPACITY by airport
-  const byAirport: Record<string, { count: number; total: number; classes: Record<string, number> }> = {};
-  for (const entry of penaltyLogs) {
-    if (entry.code === 'INVENTORY_EXCEEDS_CAPACITY' && entry.airportCode) {
-      if (!byAirport[entry.airportCode]) {
-        byAirport[entry.airportCode] = { count: 0, total: 0, classes: {} };
-      }
-      byAirport[entry.airportCode].count++;
-      byAirport[entry.airportCode].total += entry.amount;
-      if (entry.kitClass) {
-        byAirport[entry.airportCode].classes[entry.kitClass] =
-          (byAirport[entry.airportCode].classes[entry.kitClass] || 0) + 1;
-      }
-    }
+  // Summary stats
+  const totalOverflow = overflowPenalties.reduce((sum, p) => sum + p.amount, 0);
+  const byDay: Record<number, number> = {};
+  for (const p of overflowPenalties) {
+    byDay[p.day] = (byDay[p.day] || 0) + 1;
   }
 
   const output = {
-    timestamp: new Date().toISOString(),
-    totalPenalties: penaltyLogs.length,
-    summary,
-    byAirport,
-    // Only include INVENTORY_EXCEEDS_CAPACITY details
-    inventoryExceedsCapacity: penaltyLogs.filter(p => p.code === 'INVENTORY_EXCEEDS_CAPACITY'),
-    // Sample of other penalties (first 50)
-    otherPenaltiesSample: penaltyLogs.filter(p => p.code !== 'INVENTORY_EXCEEDS_CAPACITY').slice(0, 50)
+    focus: 'INVENTORY_EXCEEDS_CAPACITY',
+    totalCount: overflowPenalties.length,
+    totalPenalty: totalOverflow,
+    totalPenaltyFormatted: `${(totalOverflow / 1000000).toFixed(2)}M`,
+    byDay,
+    byAirport
   };
 
   fs.writeFileSync(logFile, JSON.stringify(output, null, 2));
-  console.log(`\n[LOG] Penalty logs written to: ${logFile}`);
+  console.log(`\n[LOG] Overflow analysis written to: ${logFile}`);
 
-  // Also write a quick summary to console
-  console.log('\n========== PENALTY SUMMARY ==========');
-  for (const [code, data] of Object.entries(summary)) {
-    console.log(`${code}: ${data.count} penalties, $${(data.total / 1000000).toFixed(2)}M`);
-    // Show distribution by day for INVENTORY_EXCEEDS_CAPACITY
-    if (code === 'INVENTORY_EXCEEDS_CAPACITY') {
-      const days = Object.entries(data.byDay).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
-      console.log(`  By day: ${days.map(([d, c]) => `D${d}:${c}`).join(', ')}`);
-    }
-  }
+  // Console summary - focused on overflow
+  console.log('\n========== OVERFLOW ANALYSIS ==========');
+  console.log(`Total overflow penalties: ${overflowPenalties.length}`);
+  console.log(`Total penalty cost: $${(totalOverflow / 1000000).toFixed(2)}M`);
 
-  // Top 10 airports with most overflow penalties
+  // By day
+  const sortedDays = Object.entries(byDay).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+  console.log(`By day: ${sortedDays.map(([d, c]) => `D${d}:${c}`).join(', ')}`);
+
+  // Top 10 airports
   if (Object.keys(byAirport).length > 0) {
-    console.log('\nTop 10 airports with INVENTORY_EXCEEDS_CAPACITY:');
-    const sorted = Object.entries(byAirport).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
-    for (const [airport, data] of sorted) {
-      const classes = Object.entries(data.classes).map(([c, n]) => `${c}:${n}`).join(', ');
-      console.log(`  ${airport}: ${data.count} penalties (${classes})`);
+    console.log('\nTop 10 airports with overflow:');
+    const sorted = Object.entries(byAirport).sort((a, b) => b[1].length - a[1].length).slice(0, 10);
+    for (const [airport, entries] of sorted) {
+      console.log(`  ${airport}: ${entries.length} penalties`);
     }
   }
-  console.log('=====================================\n');
+  console.log('========================================\n');
 }
 
 async function main() {
