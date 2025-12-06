@@ -176,7 +176,7 @@ export class FlightLoader {
     // This is dataset-agnostic because:
     // - Baseline 0.70 is economically derived (ratio ~ 1.0 means load most)
     // - Reduction only happens when capacity data shows danger
-    let loadFactor = 0.70;  // Start with baseline
+    let loadFactor = 0.70;  // Baseline - 0.72 tested but increased costs more than reduced penalties
 
     if (occupancyRatio > 0.80) {
       // Danger zone: reduce more aggressively
@@ -211,7 +211,7 @@ export class FlightLoader {
     // - isNearEnd: Day 20+ - STOP extra loading to prevent spoke overflow (was Day 28)
     // - isEndGame: Day 27+ - start returning kits to HUB1
     const isLastDay = currentDay >= 29;
-    const isNearEnd = currentDay >= 15;  // Original value - optimizations didn't help
+    const isNearEnd = currentDay >= 15;  // Day 15 is optimal - extensions tested and performed worse
     const isEndGame = currentDay >= 27;
 
     // Sort flights by priority
@@ -638,10 +638,10 @@ export class FlightLoader {
     }
 
     if (kitClass === 'premiumEconomy') {
-      // PE also has some issues - use moderate thresholds
+      // PE extra loading - 0.04 tested but didn't improve score
       saturationThreshold = 0.75;
       roomCheckThreshold = 0.30;
-      maxExtraPercent = 0.02;
+      maxExtraPercent = 0.02;  // Reverted from 0.04
     }
 
     // Hard stop if spoke is already at saturation threshold
@@ -695,25 +695,30 @@ export class FlightLoader {
 
     const remainingCapacity = capacity - alreadyLoaded;
 
-    if (isEndGame) {
-      // END-GAME: Send kits back, but respect HUB1 capacity
-      return Math.min(remainingCapacity, available - alreadyLoaded, hubRoom);
-    } else {
-      // Normal mode: only send surplus
-      const upcomingDemand = this.demandForecaster.calculateDemandForAirport(
-        flight.originAirport,
-        currentDay,
-        currentHour,
-        this.config.destinationForecastHours,
-        kitClass,
-        knownFlights
-      );
-      const currentStock = available - alreadyLoaded;
-      const surplus = Math.max(0, currentStock - upcomingDemand);
+    // Calculate remaining game hours
+    const remainingHours = Math.max(0, (29 - currentDay) * 24 + (23 - currentHour));
 
-      if (surplus > 0 && hubRoom > 0) {
-        return Math.min(remainingCapacity, surplus, hubRoom);
-      }
+    // DATASET-AGNOSTIC: Use demand-based logic for ALL phases
+    // Only difference is forecast window shrinks as game ends
+    const forecastHours = isEndGame
+      ? Math.min(12, remainingHours)  // End-game: shorter forecast (12h or remaining)
+      : this.config.destinationForecastHours;  // Normal: full 24h forecast
+
+    const upcomingDemand = this.demandForecaster.calculateDemandForAirport(
+      flight.originAirport,
+      currentDay,
+      currentHour,
+      forecastHours,
+      kitClass,
+      knownFlights
+    );
+    const currentStock = available - alreadyLoaded;
+    const surplus = Math.max(0, currentStock - upcomingDemand);
+
+    // Only return SURPLUS kits (what spoke won't need)
+    // This prevents stripping spokes of needed inventory
+    if (surplus > 0 && hubRoom > 0) {
+      return Math.min(remainingCapacity, surplus, hubRoom);
     }
 
     return 0;
