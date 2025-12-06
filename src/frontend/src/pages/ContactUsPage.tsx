@@ -1,7 +1,7 @@
 import { useCallback, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
 import { PageShell } from '../components/PageShell';
 import { SiteHeader } from '../components/SiteHeader';
+import { BackToDashboardButton } from '../components/BackToDashboardButton';
 import type { UseGameStateResult } from '../hooks/useGameState';
 import type { Theme } from '../hooks/useTheme';
 
@@ -25,19 +25,17 @@ const offices = [
 export function ContactUsPage({ game, theme, onToggleTheme }: ContactUsPageProps) {
   const { isConnected } = game;
 
-  const backLink = (
-    <Link to="/" className="text-xs uppercase tracking-[0.2em] text-text-muted hover:text-text">
-      Back to dashboard
-    </Link>
-  );
-
   const handleSubmit = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
   }, []);
 
   return (
     <PageShell>
-      <SiteHeader isConnected={isConnected} theme={theme} onToggleTheme={onToggleTheme} rightSlot={backLink} />
+      <SiteHeader isConnected={isConnected} theme={theme} onToggleTheme={onToggleTheme} />
+
+      <div className="mb-6">
+        <BackToDashboardButton />
+      </div>
 
       <div className="max-w-5xl mx-auto space-y-8">
         <section className="rounded-[34px] bg-gradient-to-br from-bg-alt/95 to-panel-dark/90 p-6 sm:p-10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03),0_30px_80px_rgba(6,6,10,0.7)]">

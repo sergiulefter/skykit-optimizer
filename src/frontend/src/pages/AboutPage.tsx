@@ -1,7 +1,6 @@
-import { Link } from 'react-router-dom';
 import { PageShell } from '../components/PageShell';
 import { SiteHeader } from '../components/SiteHeader';
-import primaryNavLinks from '../data/navLinks';
+import { BackToDashboardButton } from '../components/BackToDashboardButton';
 import type { UseGameStateResult } from '../hooks/useGameState';
 import type { Theme } from '../hooks/useTheme';
 
@@ -38,17 +37,9 @@ export function AboutPage({ game, theme, onToggleTheme }: AboutPageProps) {
     <PageShell>
       <SiteHeader isConnected={isConnected} theme={theme} onToggleTheme={onToggleTheme} />
 
-      <nav className="flex flex-wrap gap-3 mb-8">
-        {[{ to: '/', label: 'Dashboard' }, ...primaryNavLinks].map(link => (
-          <Link
-            key={link.to}
-            to={link.to}
-            className="rounded-full border border-border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-text-muted transition hover:text-text hover:border-accent"
-          >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
+      <div className="mb-6">
+        <BackToDashboardButton />
+      </div>
 
       <section className="relative overflow-hidden rounded-[34px] border border-border/60 bg-gradient-to-br from-bg-alt/70 via-panel/80 to-panel-dark/80 p-6 sm:p-10 space-y-10">
         <div className="pointer-events-none absolute inset-0 opacity-20 grid-overlay" />
@@ -131,9 +122,6 @@ export function AboutPage({ game, theme, onToggleTheme }: AboutPageProps) {
               Want to collaborate or see the optimizer paired with your dataset? Reach us via{' '}
               <a href="mailto:skykit@hackathon.team" className="text-accent underline-offset-4 hover:underline">skykit@hackathon.team</a>.
             </p>
-            <Link to="/" className="text-xs uppercase tracking-[0.2em] text-text-muted hover:text-text">
-              ← Back to dashboard
-            </Link>
           </footer>
         </div>
       </section>

@@ -1,13 +1,11 @@
-export type NavLink = {
-  to: string;
-  label: string;
-};
-
-export const primaryNavLinks: NavLink[] = [
+export const dashboardNavLinks = [
   { to: '/inventory', label: 'Airport Inventory' },
   { to: '/network', label: 'Global Network' },
   { to: '/events', label: 'Events & Penalties' },
-  { to: '/about', label: 'About Us' }
+  { to: '/about', label: 'About Us' },
+  { to: '/contact', label: 'Contact Us' }
 ];
 
-export default primaryNavLinks;
+export type DashboardNavLink = typeof dashboardNavLinks[number];
+
+export default dashboardNavLinks;

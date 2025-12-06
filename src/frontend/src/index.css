@@ -206,23 +206,23 @@ body {
 .flight-plane--one {
   top: 10%;
   left: -5%;
-  animation: flight-path-a 22s linear infinite;
+  animation: flight-path-a 12s linear infinite;
 }
 
 .flight-plane--two {
   bottom: 20%;
   right: -10%;
-  animation: flight-path-b 28s linear infinite;
+  animation: flight-path-b 15s linear infinite;
 }
 
 .flight-plane--three {
   bottom: -5%;
   left: 15%;
-  animation: flight-path-c 24s linear infinite;
+  animation: flight-path-c 13s linear infinite;
 }
 
 .flight-plane--four {
   top: 25%;
   right: -12%;
-  animation: flight-path-d 30s linear infinite;
+  animation: flight-path-d 17s linear infinite;
 }

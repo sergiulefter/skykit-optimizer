@@ -6,7 +6,7 @@ import { InventoryPage } from './pages/InventoryPage';
 import { NetworkPage } from './pages/NetworkPage';
 import { EventsPage } from './pages/EventsPage';
 import { AboutPage } from './pages/AboutPage';
-import {ContactUsPage} from "./pages/ContactUsPage";
+import { ContactUsPage } from './pages/ContactUsPage';
 
 function App() {
   const game = useGameState(1000);
@@ -19,6 +19,7 @@ function App() {
       <Route path="/network" element={<NetworkPage game={game} theme={theme} onToggleTheme={toggleTheme} />} />
       <Route path="/events" element={<EventsPage game={game} theme={theme} onToggleTheme={toggleTheme} />} />
       <Route path="/about" element={<AboutPage game={game} theme={theme} onToggleTheme={toggleTheme} />} />
+      <Route path="/contact" element={<ContactUsPage game={game} theme={theme} onToggleTheme={toggleTheme} />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

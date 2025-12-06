@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { SimControls } from '../components/SimControls';
 import { PageShell } from '../components/PageShell';
 import { SiteHeader } from '../components/SiteHeader';
-import primaryNavLinks from '../data/navLinks';
+import dashboardNavLinks from '../data/navLinks';
 import type { UseGameStateResult } from '../hooks/useGameState';
 import type { Theme } from '../hooks/useTheme';
 
@@ -107,8 +107,8 @@ export function HomePage({ game, theme, onToggleTheme }: HomePageProps) {
     <PageShell>
       <SiteHeader isConnected={isConnected} theme={theme} onToggleTheme={onToggleTheme} />
 
-      <nav className="flex flex-wrap gap-3 mb-6">
-        {primaryNavLinks.map(link => (
+      <nav className="flex flex-wrap gap-3 mb-8">
+        {dashboardNavLinks.map(link => (
           <Link
             key={link.to}
             to={link.to}
