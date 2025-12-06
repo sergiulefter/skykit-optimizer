@@ -282,4 +282,11 @@ export class GameState {
   printStocks(): void {
     this.inventoryManager.printStocks();
   }
+
+  /**
+   * Get airport data (for logging)
+   */
+  getAirport(airportCode: string): Airport | undefined {
+    return this.inventoryManager.getAirport(airportCode);
+  }
 }

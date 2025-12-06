@@ -1,5 +1,5 @@
 import { ApiClient } from './api/client';
-import { HourRequestDto, HourResponseDto } from './types';
+import { HourRequestDto, HourResponseDto, PenaltyDto } from './types';
 import { loadAircraftTypes, loadAirports, getInitialStocks, loadFlightPlan } from './data/loader';
 import { GameState } from './engine/state';
 import {
@@ -14,9 +14,124 @@ import {
   clearState
 } from './server';
 import { startEvalPlatform, stopEvalPlatform } from './evalPlatform';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const TOTAL_DAYS = 30;
 const HOURS_PER_DAY = 24;
+
+// ============ PENALTY LOGGING SYSTEM ============
+interface PenaltyLogEntry {
+  day: number;
+  hour: number;
+  code: string;
+  amount: number;
+  reason: string;
+  flightNumber?: string;
+  airportCode?: string;
+  kitClass?: string;
+  kitsOverCapacity?: number;
+  airportStock?: { first: number; business: number; premiumEconomy: number; economy: number };
+  airportCapacity?: { first: number; business: number; premiumEconomy: number; economy: number };
+}
+
+let penaltyLogs: PenaltyLogEntry[] = [];
+
+function parsePenaltyReason(reason: string): { airportCode?: string; kitClass?: string; kitsOverCapacity?: number } {
+  const airportMatch = reason.match(/Airport (\w+)/);
+  const classMatch = reason.match(/(First|Business|Premium Economy|Economy) Class/);
+  const kitsMatch = reason.match(/inventory of (\d+) kits.*capacity of (\d+)/);
+
+  return {
+    airportCode: airportMatch ? airportMatch[1] : undefined,
+    kitClass: classMatch ? classMatch[1].toLowerCase().replace(' ', '') : undefined,
+    kitsOverCapacity: kitsMatch ? parseInt(kitsMatch[1]) - parseInt(kitsMatch[2]) : undefined
+  };
+}
+
+function logPenaltyToFile(penalty: PenaltyDto, gameState: GameState) {
+  const parsed = parsePenaltyReason(penalty.reason);
+
+  const entry: PenaltyLogEntry = {
+    day: penalty.issuedDay,
+    hour: penalty.issuedHour,
+    code: penalty.code,
+    amount: penalty.penalty,
+    reason: penalty.reason,
+    flightNumber: penalty.flightNumber,
+    ...parsed
+  };
+
+  if (parsed.airportCode) {
+    const stock = gameState.getStock(parsed.airportCode);
+    const airport = gameState.getAirport(parsed.airportCode);
+    if (stock) entry.airportStock = { ...stock };
+    if (airport) entry.airportCapacity = { ...airport.capacity };
+  }
+
+  penaltyLogs.push(entry);
+}
+
+function writePenaltyLogs() {
+  const logDir = path.join(process.cwd(), 'logs');
+  if (!fs.existsSync(logDir)) {
+    fs.mkdirSync(logDir, { recursive: true });
+  }
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const logFile = path.join(logDir, `penalties-${timestamp}.json`);
+
+  const summary: Record<string, { count: number; total: number; byDay: Record<number, number> }> = {};
+  for (const entry of penaltyLogs) {
+    if (!summary[entry.code]) summary[entry.code] = { count: 0, total: 0, byDay: {} };
+    summary[entry.code].count++;
+    summary[entry.code].total += entry.amount;
+    summary[entry.code].byDay[entry.day] = (summary[entry.code].byDay[entry.day] || 0) + 1;
+  }
+
+  const byAirport: Record<string, { count: number; total: number; classes: Record<string, number> }> = {};
+  for (const entry of penaltyLogs) {
+    if (entry.code === 'INVENTORY_EXCEEDS_CAPACITY' && entry.airportCode) {
+      if (!byAirport[entry.airportCode]) byAirport[entry.airportCode] = { count: 0, total: 0, classes: {} };
+      byAirport[entry.airportCode].count++;
+      byAirport[entry.airportCode].total += entry.amount;
+      if (entry.kitClass) {
+        byAirport[entry.airportCode].classes[entry.kitClass] = (byAirport[entry.airportCode].classes[entry.kitClass] || 0) + 1;
+      }
+    }
+  }
+
+  const output = {
+    timestamp: new Date().toISOString(),
+    totalPenalties: penaltyLogs.length,
+    summary,
+    byAirport,
+    inventoryExceedsCapacity: penaltyLogs.filter(p => p.code === 'INVENTORY_EXCEEDS_CAPACITY'),
+    otherPenaltiesSample: penaltyLogs.filter(p => p.code !== 'INVENTORY_EXCEEDS_CAPACITY').slice(0, 50)
+  };
+
+  fs.writeFileSync(logFile, JSON.stringify(output, null, 2));
+  console.log(`\n[LOG] Penalty logs written to: ${logFile}`);
+
+  console.log('\n========== PENALTY SUMMARY ==========');
+  for (const [code, data] of Object.entries(summary)) {
+    console.log(`${code}: ${data.count} penalties, $${(data.total / 1000000).toFixed(2)}M`);
+    if (code === 'INVENTORY_EXCEEDS_CAPACITY') {
+      const days = Object.entries(data.byDay).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+      console.log(`  By day: ${days.map(([d, c]) => `D${d}:${c}`).join(', ')}`);
+    }
+  }
+
+  if (Object.keys(byAirport).length > 0) {
+    console.log('\nTop 10 airports with INVENTORY_EXCEEDS_CAPACITY:');
+    const sorted = Object.entries(byAirport).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
+    for (const [airport, data] of sorted) {
+      const classes = Object.entries(data.classes).map(([c, n]) => `${c}:${n}`).join(', ');
+      console.log(`  ${airport}: ${data.count} penalties (${classes})`);
+    }
+  }
+  console.log('=====================================\n');
+}
 
 // Pre-loaded data
 let aircraftTypes: ReturnType<typeof loadAircraftTypes>;
@@ -77,7 +192,7 @@ async function runGame() {
         if (previousResponse) {
           gameState.processFlightUpdates(previousResponse.flightUpdates);
 
-          // Track penalties for frontend
+          // Track penalties for frontend AND file logging
           for (const penalty of previousResponse.penalties) {
             addPenalty({
               code: penalty.code,
@@ -88,6 +203,8 @@ async function runGame() {
               issuedDay: penalty.issuedDay,
               issuedHour: penalty.issuedHour
             });
+            // Log to file for analysis
+            logPenaltyToFile(penalty, gameState);
           }
 
           // Add flight events for frontend
@@ -229,6 +346,9 @@ async function runGame() {
       }
     }
 
+    // Write detailed penalty logs to file
+    writePenaltyLogs();
+
   } catch (error) {
     console.error('\n[ERROR] Game failed:', error);
     setGameRunning(false);
@@ -237,6 +357,10 @@ async function runGame() {
       text: `Game error: ${error}`,
       timestamp: new Date().toISOString()
     });
+    // Still try to write logs even on error
+    if (penaltyLogs.length > 0) {
+      writePenaltyLogs();
+    }
   } finally {
     // Step 3: Stop eval platform (so it's ready for next run)
     console.log('\n[EVAL] Stopping eval platform for next run...');
@@ -246,6 +370,8 @@ async function runGame() {
 
     // Reset game complete flag so we can start again
     setGameComplete(false);
+    // Clear penalty logs for next run
+    penaltyLogs = [];
   }
 }
 
