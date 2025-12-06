@@ -125,9 +125,9 @@ export class PurchasingManager {
     const isEarlyGame = currentDay <= 2;
 
     if (isEarlyGame) {
-      // Day 0-2: Purchase at EVERY HOUR if below 70% capacity
-      // Don't wait for regular intervals - flights start departing and we need stock NOW
-      if (currentStock < capacity * 0.7) {
+      // Day 0-2: Purchase at EVERY HOUR if below 50% capacity
+      // FIX 1.3: Was 70%, reduced to prevent HUB1 overflow for First/PE classes
+      if (currentStock < capacity * 0.5) {
         const maxToBuy = maxTotalPurchase - this.totalPurchased[kitClass];
         const earlyGameAmount = Math.min(maxPerOrder, maxToBuy, apiLimit, maxRoom);
 

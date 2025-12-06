@@ -95,11 +95,11 @@ export const DEFAULT_PURCHASE_CONFIG: PurchaseConfig = {
   apiLimits: {
     first: 42000,
     business: 42000,
-    premiumEconomy: 1000,
+    premiumEconomy: 3000,  // FIX 1.2: Was 1000, aligned with threshold to prevent burst purchases
     economy: 42000
   },
   purchaseInterval: 6,
-  demandBuffer: 1.1,
+  demandBuffer: 1.0,  // FIX 1.1: Was 1.1, reduced to prevent over-purchasing
   forecastHours: 48
 };
 
@@ -108,7 +108,7 @@ export const DEFAULT_LOADING_CONFIG: LoadingConfig = {
     hub: 100,
     spoke: 20
   },
-  destinationForecastHours: 48,
+  destinationForecastHours: 24,  // FIX 2.1: Was 48, reduced to prevent spoke overflow
   enableExtraLoadingToSpokes: true,
   enableReturnToHub: true
 };

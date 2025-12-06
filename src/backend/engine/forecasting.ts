@@ -142,11 +142,12 @@ export class DemandForecaster {
    * Get typical demand estimate for a kit class
    */
   private getTypicalDemandEstimate(kitClass: keyof PerClassAmount): number {
+    // FIX 3.1: Reduced economy from 250 to 200 to prevent spoke overflow
     switch (kitClass) {
       case 'first': return 10;
       case 'business': return 50;
       case 'premiumEconomy': return 25;
-      case 'economy': return 250;
+      case 'economy': return 200;  // Was 250
       default: return 0;
     }
   }

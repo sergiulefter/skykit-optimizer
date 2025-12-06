@@ -65,6 +65,7 @@ export interface FlightEvent {
   arrival: ReferenceHour;
   passengers: PerClassAmount;
   aircraftType: string;
+  distance: number;  // Distance in km (scheduled for SCHEDULED/CHECKED_IN, actual for LANDED)
 }
 
 export interface PenaltyDto {

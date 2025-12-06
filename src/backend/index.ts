@@ -28,24 +28,71 @@ interface PenaltyLogEntry {
   amount: number;
   reason: string;
   flightNumber?: string;
+  flightId?: string;
+  flightDistance?: number;  // Distance of the flight (important for FLIGHT_UNFULFILLED penalties)
   airportCode?: string;
   kitClass?: string;
   kitsOverCapacity?: number;
+  unfulfilledPassengers?: number;  // Number of passengers without kits
   airportStock?: { first: number; business: number; premiumEconomy: number; economy: number };
   airportCapacity?: { first: number; business: number; premiumEconomy: number; economy: number };
 }
 
 let penaltyLogs: PenaltyLogEntry[] = [];
 
-function parsePenaltyReason(reason: string): { airportCode?: string; kitClass?: string; kitsOverCapacity?: number } {
-  const airportMatch = reason.match(/Airport (\w+)/);
-  const classMatch = reason.match(/(First|Business|Premium Economy|Economy) Class/);
-  const kitsMatch = reason.match(/inventory of (\d+) kits.*capacity of (\d+)/);
+function parsePenaltyReason(reason: string): {
+  airportCode?: string;
+  kitClass?: string;
+  kitsOverCapacity?: number;
+  unfulfilledPassengers?: number;
+} {
+  // Match airport code from different formats:
+  // - "for airport PWLW" (INVENTORY_EXCEEDS_CAPACITY)
+  // - "Airport PWLW" (other penalties)
+  const airportMatch = reason.match(/for airport (\w+)/i) || reason.match(/Airport (\w+)/i);
+
+  // Match kit type from INVENTORY_EXCEEDS_CAPACITY: "kit type D_ECONOMY"
+  const kitTypeMatch = reason.match(/kit type (D_ECONOMY|C_PREMIUM_ECONOMY|B_BUSINESS|A_FIRST)/i);
+  // Match class from FLIGHT_UNFULFILLED: "Economy Class"
+  const classMatch = reason.match(/(First|Business|Premium Economy|Economy) Class/i);
+
+  // Map kit type codes to class names
+  const kitTypeToClass: Record<string, string> = {
+    'D_ECONOMY': 'economy',
+    'C_PREMIUM_ECONOMY': 'premiumeconomy',
+    'B_BUSINESS': 'business',
+    'A_FIRST': 'first'
+  };
+
+  // Parse kits over capacity: "of 102 kits" at end of reason
+  const kitsOverMatch = reason.match(/of (\d+) kits$/i);
+  // Old format: "inventory of X kits ... capacity of Y"
+  const kitsOldMatch = reason.match(/inventory of (\d+) kits.*capacity of (\d+)/);
+
+  // Parse unfulfilled passengers: "has unfulfilled Economy Class passengers of 14 kits"
+  const unfulfilledMatch = reason.match(/unfulfilled.*?(\d+) kits/i);
+
+  // Determine kit class from either format
+  let kitClass: string | undefined;
+  if (kitTypeMatch) {
+    kitClass = kitTypeToClass[kitTypeMatch[1].toUpperCase()];
+  } else if (classMatch) {
+    kitClass = classMatch[1].toLowerCase().replace(' ', '');
+  }
+
+  // Determine kits over capacity from either format
+  let kitsOverCapacity: number | undefined;
+  if (kitsOverMatch) {
+    kitsOverCapacity = parseInt(kitsOverMatch[1]);
+  } else if (kitsOldMatch) {
+    kitsOverCapacity = parseInt(kitsOldMatch[1]) - parseInt(kitsOldMatch[2]);
+  }
 
   return {
     airportCode: airportMatch ? airportMatch[1] : undefined,
-    kitClass: classMatch ? classMatch[1].toLowerCase().replace(' ', '') : undefined,
-    kitsOverCapacity: kitsMatch ? parseInt(kitsMatch[1]) - parseInt(kitsMatch[2]) : undefined
+    kitClass,
+    kitsOverCapacity,
+    unfulfilledPassengers: unfulfilledMatch ? parseInt(unfulfilledMatch[1]) : undefined
   };
 }
 
@@ -59,8 +106,17 @@ function logPenaltyToFile(penalty: PenaltyDto, gameState: GameState) {
     amount: penalty.penalty,
     reason: penalty.reason,
     flightNumber: penalty.flightNumber,
+    flightId: penalty.flightId,
     ...parsed
   };
+
+  // For FLIGHT_UNFULFILLED penalties, get the flight distance from knownFlights
+  if (penalty.code.includes('UNFULFILLED') && penalty.flightId) {
+    const flight = gameState.knownFlights.get(penalty.flightId);
+    if (flight) {
+      entry.flightDistance = flight.distance;
+    }
+  }
 
   if (parsed.airportCode) {
     const stock = gameState.getStock(parsed.airportCode);
@@ -101,13 +157,43 @@ function writePenaltyLogs() {
     }
   }
 
+  // Analyze FLIGHT_UNFULFILLED penalties by distance
+  const unfulfilledByDistance: { short: number; medium: number; long: number; veryLong: number } = {
+    short: 0,    // < 2000 km
+    medium: 0,   // 2000-4000 km
+    long: 0,     // 4000-6000 km
+    veryLong: 0  // > 6000 km
+  };
+  const unfulfilledFlights: Array<{ flightNumber: string; distance: number; penalty: number; passengers: number }> = [];
+
+  for (const entry of penaltyLogs) {
+    if (entry.code.includes('UNFULFILLED') && entry.flightDistance) {
+      if (entry.flightDistance < 2000) unfulfilledByDistance.short++;
+      else if (entry.flightDistance < 4000) unfulfilledByDistance.medium++;
+      else if (entry.flightDistance < 6000) unfulfilledByDistance.long++;
+      else unfulfilledByDistance.veryLong++;
+
+      if (entry.flightNumber) {
+        unfulfilledFlights.push({
+          flightNumber: entry.flightNumber,
+          distance: entry.flightDistance,
+          penalty: entry.amount,
+          passengers: entry.unfulfilledPassengers || 0
+        });
+      }
+    }
+  }
+
   const output = {
     timestamp: new Date().toISOString(),
     totalPenalties: penaltyLogs.length,
     summary,
     byAirport,
+    unfulfilledByDistance,
+    topUnfulfilledFlights: unfulfilledFlights.sort((a, b) => b.penalty - a.penalty).slice(0, 20),
     inventoryExceedsCapacity: penaltyLogs.filter(p => p.code === 'INVENTORY_EXCEEDS_CAPACITY'),
-    otherPenaltiesSample: penaltyLogs.filter(p => p.code !== 'INVENTORY_EXCEEDS_CAPACITY').slice(0, 50)
+    flightUnfulfilled: penaltyLogs.filter(p => p.code.includes('UNFULFILLED')),
+    otherPenaltiesSample: penaltyLogs.filter(p => p.code !== 'INVENTORY_EXCEEDS_CAPACITY' && !p.code.includes('UNFULFILLED')).slice(0, 50)
   };
 
   fs.writeFileSync(logFile, JSON.stringify(output, null, 2));
@@ -128,6 +214,24 @@ function writePenaltyLogs() {
     for (const [airport, data] of sorted) {
       const classes = Object.entries(data.classes).map(([c, n]) => `${c}:${n}`).join(', ');
       console.log(`  ${airport}: ${data.count} penalties (${classes})`);
+    }
+  }
+
+  // Print FLIGHT_UNFULFILLED analysis
+  const totalUnfulfilled = unfulfilledByDistance.short + unfulfilledByDistance.medium + unfulfilledByDistance.long + unfulfilledByDistance.veryLong;
+  if (totalUnfulfilled > 0) {
+    console.log('\nFLIGHT_UNFULFILLED by distance:');
+    console.log(`  Short (<2000km): ${unfulfilledByDistance.short}`);
+    console.log(`  Medium (2000-4000km): ${unfulfilledByDistance.medium}`);
+    console.log(`  Long (4000-6000km): ${unfulfilledByDistance.long}`);
+    console.log(`  Very Long (>6000km): ${unfulfilledByDistance.veryLong}`);
+
+    if (unfulfilledFlights.length > 0) {
+      console.log('\nTop 5 costliest UNFULFILLED flights:');
+      const top5 = unfulfilledFlights.sort((a, b) => b.penalty - a.penalty).slice(0, 5);
+      for (const f of top5) {
+        console.log(`  ${f.flightNumber}: ${f.distance.toFixed(0)}km, ${f.passengers} pax, $${(f.penalty / 1000).toFixed(1)}k`);
+      }
     }
   }
   console.log('=====================================\n');

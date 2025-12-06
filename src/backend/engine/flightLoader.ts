@@ -54,7 +54,7 @@ export class FlightLoader {
     // - isNearEnd: Day 20+ - STOP extra loading to prevent spoke overflow (was Day 28)
     // - isEndGame: Day 27+ - start returning kits to HUB1
     const isLastDay = currentDay >= 29;
-    const isNearEnd = currentDay >= 20;  // FIX 4: Stop extra loading much earlier
+    const isNearEnd = currentDay >= 15;  // FIX 2.3: Was 20, now 15 - stop extra loading even earlier
     const isEndGame = currentDay >= 27;
 
     // Sort flights by priority
@@ -314,15 +314,15 @@ export class FlightLoader {
     const destCapacity = destAirport.capacity[kitClass];
     const destRoom = Math.max(0, destCapacity - destCurrent - inFlightToDestination - processingAtDestination);
 
-    // FIX 5: Hard stop if spoke is already at 90%+ capacity
+    // FIX 2.4: Hard stop if spoke is already at 85%+ capacity (was 90%)
     const totalAtDest = destCurrent + inFlightToDestination + processingAtDestination;
-    if (totalAtDest > destCapacity * 0.90) {
-      return 0;  // Spoke at 90%+ capacity, don't send anything extra
+    if (totalAtDest > destCapacity * 0.85) {
+      return 0;  // Spoke at 85%+ capacity, don't send anything extra
     }
 
     // FIX 1: Percentage-based room check instead of fixed 100
-    // Don't send if room is less than 15% of capacity
-    if (destRoom < destCapacity * 0.15) {
+    // Don't send if room is less than 20% of capacity (was 15%)
+    if (destRoom < destCapacity * 0.20) {
       return 0;  // Spoke is near capacity, don't risk overflow
     }
 
@@ -330,9 +330,9 @@ export class FlightLoader {
     const remainingCapacity = capacity - alreadyLoaded;
     const remainingStock = available - alreadyLoaded;
 
-    // FIX 2: Hard cap at 10% of destination capacity AND 50% of available room
-    const maxExtraByCapacity = Math.floor(destCapacity * 0.10);
-    const maxExtraByRoom = Math.floor(destRoom * 0.5);
+    // FIX 2.2: Hard cap at 5% of destination capacity (was 10%) AND 30% of available room (was 50%)
+    const maxExtraByCapacity = Math.floor(destCapacity * 0.05);
+    const maxExtraByRoom = Math.floor(destRoom * 0.3);
     const safeExtra = Math.min(destDeficit, maxExtraByCapacity, maxExtraByRoom, destRoom, remainingCapacity, remainingStock);
 
     return safeExtra;
