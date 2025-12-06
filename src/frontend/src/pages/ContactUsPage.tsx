@@ -122,7 +122,7 @@ export function ContactUsPage({ game, theme, onToggleTheme, language, onToggleLa
       </div>
 
       <div className="max-w-5xl mx-auto space-y-8">
-        <section className="rounded-[34px] bg-gradient-to-br from-bg-alt/95 to-panel-dark/90 p-6 sm:p-10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03),0_30px_80px_rgba(6,6,10,0.7)]">
+        <section className="rounded-[34px] bg-linear-to-br from-bg-alt/95 to-panel-dark/90 p-6 sm:p-10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03),0_30px_80px_rgba(6,6,10,0.7)]">
           <p className="uppercase tracking-[0.2em] text-xs text-text-muted mb-2">{copy.heroBadge}</p>
           <h2 className="text-3xl sm:text-4xl font-semibold">{copy.heroTitle}</h2>
           <p className="text-text-muted mt-3 max-w-3xl">
@@ -212,7 +212,7 @@ export function ContactUsPage({ game, theme, onToggleTheme, language, onToggleLa
           </form>
         </section>
 
-        <section className="rounded-[24px] border border-border/70 bg-gradient-to-r from-panel-dark/80 via-bg-alt/70 to-panel/80 p-6 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+        <section className="rounded-3xl border border-border/70 bg-linear-to-r from-panel-dark/80 via-bg-alt/70 to-panel/80 p-6 sm:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="uppercase tracking-[0.2em] text-xs text-text-muted mb-1">{copy.officesBadge}</p>
