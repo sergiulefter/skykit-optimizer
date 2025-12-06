@@ -200,22 +200,33 @@ export class FlightLoader {
     // Load passenger demand first - NEVER exceed available stock
     let toLoad = Math.min(demand, available, capacity);
 
-    // FIX 4: For flights TO HUB1, check HUB1 capacity BEFORE loading
-    // This prevents HUB1 overflow from return flights
-    if (flight.destinationAirport === 'HUB1') {
-      const hubStock = this.inventoryManager.getStock('HUB1');
-      const hubAirport = this.inventoryManager.getAirport('HUB1');
-      if (hubStock && hubAirport) {
-        const hubCapacity = hubAirport.capacity[kitClass];
-        const hubInFlight = this.inventoryManager.getInFlightKitsToAirport('HUB1', kitClass);
-        const hubProcessing = this.inventoryManager.getProcessingKitsAtAirport('HUB1', kitClass);
-        const hubTotal = hubStock[kitClass] + hubInFlight + hubProcessing;
-        const hubRoom = Math.max(0, hubCapacity * 0.95 - hubTotal);  // Original: Leave 5% buffer
+    // FIX 14: Check destination capacity for ALL flights (not just TO HUB1)
+    // CRITICAL: Server counts landed kits IMMEDIATELY in stock!
+    // Our processing queue doesn't reflect server reality for capacity checks
+    const destStock = this.inventoryManager.getStock(flight.destinationAirport);
+    const destAirport = this.inventoryManager.getAirport(flight.destinationAirport);
+    if (destStock && destAirport) {
+      const destCapacity = destAirport.capacity[kitClass];
+      const destInFlight = this.inventoryManager.getInFlightKitsToAirport(flight.destinationAirport, kitClass);
+      // Don't use processingKits - server adds landed kits to stock immediately!
+      const destTotal = destStock[kitClass] + destInFlight;
 
-        if (toLoad > hubRoom) {
-          // Only load what HUB1 can receive
-          toLoad = Math.max(0, hubRoom);
-        }
+      // FIX 15: Different buffer per kit class - Economy needs more aggressive buffer
+      // All overflows are Economy class, so we use tighter buffer for Economy
+      let bufferPercent: number;
+      if (flight.destinationAirport === 'HUB1') {
+        bufferPercent = 0.95;  // HUB1 can handle more
+      } else if (kitClass === 'economy') {
+        bufferPercent = 0.70;  // 70% for Economy (most problematic - all 156 overflows)
+      } else if (kitClass === 'premiumEconomy') {
+        bufferPercent = 0.80;  // 80% for PE (some issues historically)
+      } else {
+        bufferPercent = 0.85;  // 85% for First/Business (no overflow issues)
+      }
+      const destRoom = Math.max(0, destCapacity * bufferPercent - destTotal);
+
+      if (toLoad > destRoom) {
+        toLoad = Math.max(0, destRoom);
       }
     }
 
@@ -321,36 +332,59 @@ export class FlightLoader {
     );
 
     // Calculate what will be available at destination
+    // Include processing kits in calculation (they count toward capacity)
     const destCurrent = destStock[kitClass];
     const inFlightToDestination = this.inventoryManager.getInFlightKitsToAirport(flight.destinationAirport, kitClass);
-    const processingAtDestination = this.inventoryManager.getProcessingKitsAtAirport(flight.destinationAirport, kitClass);
-    const destExpected = destCurrent + inFlightToDestination + processingAtDestination;
+    const processingAtDest = this.inventoryManager.getProcessingKitsAtAirport(flight.destinationAirport, kitClass);
+    const destExpected = destCurrent + inFlightToDestination + processingAtDest;
 
     // Calculate actual deficit
     const destDeficit = Math.max(0, destDemand - destExpected);
 
-    // Check capacity constraint
+    // Check capacity constraint - include processing kits!
     const destCapacity = destAirport.capacity[kitClass];
-    const destRoom = Math.max(0, destCapacity - destCurrent - inFlightToDestination - processingAtDestination);
+    const totalAtDest = destCurrent + inFlightToDestination + processingAtDest;
+    const destRoom = Math.max(0, destCapacity - totalAtDest);
 
-    // Original: Hard stop if spoke is already at 85%+ capacity
-    const totalAtDest = destCurrent + inFlightToDestination + processingAtDestination;
-    if (totalAtDest > destCapacity * 0.85) {
-      return 0;  // Spoke at 85%+ capacity, don't send anything extra
+    // FIX 13: CRITICAL - Server adds landed kits to stock IMMEDIATELY
+    // Our local tracking shows 128 kits, but server has 882 (750+ kit difference!)
+    // Problem: We calculate totalAtDest = stock + inFlight + processing
+    // But server: stock already includes landed kits that we put in processing queue
+    //
+    // Solution: COMPLETELY DISABLE extra loading for Economy
+    // Economy overflow is 696 penalties = 73.58M (main problem!)
+    if (kitClass === 'economy') {
+      return 0;  // NO extra Economy kits to spokes - ever!
     }
 
-    // Original: Percentage-based room check - 20%
-    // Don't send if room is less than 20% of capacity
-    if (destRoom < destCapacity * 0.20) {
-      return 0;  // Spoke is near capacity, don't risk overflow
+    // For other classes, use moderate thresholds
+    let saturationThreshold = 0.85;
+    let roomCheckThreshold = 0.20;
+    let maxExtraPercent = 0.05;
+
+    if (kitClass === 'premiumEconomy') {
+      // PE also has some issues
+      saturationThreshold = 0.75;
+      roomCheckThreshold = 0.30;
+      maxExtraPercent = 0.02;
+    }
+
+    // Hard stop if spoke is already at saturation threshold
+    if (totalAtDest > destCapacity * saturationThreshold) {
+      return 0;
+    }
+
+    // Don't send if room is less than room check threshold
+    if (destRoom < destCapacity * roomCheckThreshold) {
+      return 0;
     }
 
     // Calculate how many extra we can load
     const remainingCapacity = capacity - alreadyLoaded;
     const remainingStock = available - alreadyLoaded;
 
-    // Original: Hard cap at 5% of destination capacity AND 30% of available room
-    const maxExtraByCapacity = Math.floor(destCapacity * 0.05);
+    // Hard cap at maxExtraPercent of destination capacity AND 30% of available room
+    const maxExtraByCapacity = Math.floor(destCapacity * maxExtraPercent);
     const maxExtraByRoom = Math.floor(destRoom * 0.3);
     const safeExtra = Math.min(destDeficit, maxExtraByCapacity, maxExtraByRoom, destRoom, remainingCapacity, remainingStock);
 
