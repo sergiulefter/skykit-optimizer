@@ -66,8 +66,8 @@ export class GameState {
       aircraftTypes,
       loadingConfig
     );
-    // Compute dynamic economy load factor based on dataset characteristics
-    this.flightLoader.computeEconomyLoadFactor();
+    // NOTE: Economy load factor is now calculated PER-FLIGHT in calculateEconomyLoadFactorForFlight()
+    // No startup computation needed - each flight gets its own factor based on route economics
 
     this.purchasingManager = new PurchasingManager(
       this.inventoryManager,

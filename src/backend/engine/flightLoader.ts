@@ -24,9 +24,6 @@ export class FlightLoader {
   private aircraftTypes: Map<string, Aircraft>;
   private config: LoadingConfig;
 
-  // Computed load factors based on dataset characteristics
-  private economyLoadFactor: number = 0.80;  // Default, will be computed
-
   constructor(
     inventoryManager: InventoryManager,
     demandForecaster: DemandForecaster,
@@ -40,31 +37,54 @@ export class FlightLoader {
   }
 
   /**
-   * Compute optimal economy load factor based on dataset characteristics
-   * Called once at game start - uses static flight plan data
+   * Calculate economy load factor for a specific flight based on its economics
    *
-   * The principle: Economy penalty = 0.003 × distance × $50
-   * - Short avg distance → lower penalty → can accept more unfulfilled → lower factor
-   * - Long avg distance → higher penalty → should load more → higher factor
+   * This is a FIRST-PRINCIPLES calculation that generalizes to any dataset:
+   * 1. Calculate transport cost per kit (loading + movement + processing)
+   * 2. Calculate penalty per kit if not loaded (0.003 × distance × $50)
+   * 3. Use ratio to determine optimal load factor
    *
-   * Calibration: Current dataset has avg ~3930km and 80% is optimal
+   * Higher penalty/cost ratio → load more (penalty dominates)
+   * Lower penalty/cost ratio → load less (cost matters more)
+   *
+   * @param flight The flight to calculate for
+   * @returns Load factor between 0.70 and 0.90
    */
-  computeEconomyLoadFactor(): void {
-    const avgDistance = this.demandForecaster.getAverageFlightDistance();
+  private calculateEconomyLoadFactorForFlight(flight: FlightEvent): number {
+    // Get route-specific costs from actual game data
+    const originAirport = this.inventoryManager.getAirport(flight.originAirport);
+    const destAirport = this.inventoryManager.getAirport(flight.destinationAirport);
+    const aircraft = this.aircraftTypes.get(flight.aircraftType);
 
-    // Calibration: At avg distance ~3930km, 80% is optimal (tested empirically)
-    // Scale linearly: shorter distances → lower factor, longer → higher factor
-    // Range: 70% (very short, <2000km) to 90% (very long, >6000km)
-    const baseDistance = 3930;
-    const baseFactor = 0.80;
+    const distance = this.demandForecaster.getFlightDistance(
+      flight.originAirport,
+      flight.destinationAirport
+    );
 
-    // Each 1000km difference adjusts factor by ~2.5%
-    // This gives: 2000km → 75%, 4000km → 80%, 6000km → 85%
-    const adjustment = ((avgDistance - baseDistance) / 1000) * 0.025;
+    // Calculate cost to transport one economy kit on this flight
+    // Uses actual airport costs from CSV data
+    const loadingCost = originAirport?.loadingCost?.economy ?? 2.0;
+    const fuelRate = aircraft?.costPerKgPerKm ?? 0.001;
+    const movementCost = distance * fuelRate * 1.5;  // 1.5kg per economy kit
+    const processingCost = destAirport?.processingCost?.economy ?? 4.0;
+    const totalCost = loadingCost + movementCost + processingCost;
 
-    this.economyLoadFactor = Math.max(0.70, Math.min(0.90, baseFactor + adjustment));
+    // Calculate penalty for NOT loading one economy kit
+    // From game rules: 0.003 × distance × kitCost
+    const penaltyPerKit = 0.003 * distance * 50;  // $50 = economy kit cost
 
-    console.log(`[FLIGHT_LOADER] Computed economy load factor: ${(this.economyLoadFactor * 100).toFixed(1)}% (avg distance: ${avgDistance.toFixed(0)}km)`);
+    // Economic ratio: how much more expensive is the penalty vs the transport cost?
+    const ratio = penaltyPerKit / totalCost;
+
+    // Map ratio to load factor using policy thresholds
+    // These are POLICY CHOICES, not dataset-specific tuning:
+    // - 70% minimum: Never skip more than 30% of economy demand
+    // - 90% maximum: Always skip at least 10% (accounts for overflow risk)
+    if (ratio >= 80) return 0.90;
+    if (ratio >= 50) return 0.85;
+    if (ratio >= 30) return 0.80;
+    if (ratio >= 15) return 0.75;
+    return 0.70;
   }
 
   /**
@@ -261,14 +281,18 @@ export class FlightLoader {
     isLastDay: boolean,
     isEarlyGame: boolean
   ): number {
-    // Load factors per class - economy reduced because it has lowest unfulfilled penalty
-    // Economy factor is computed dynamically based on dataset's average flight distance
-    // See computeEconomyLoadFactor() for the adaptive calculation
+    // Load factors per class - economy is calculated PER-FLIGHT based on route economics
+    // First/Business/PE stay at 100% because their unfulfilled penalties are high
+    // Economy gets dynamic factor based on penalty/cost ratio for THIS specific flight
+    const economyFactor = kitClass === 'economy'
+      ? this.calculateEconomyLoadFactorForFlight(flight)
+      : 1.0;
+
     const LOAD_FACTOR: Record<keyof PerClassAmount, number> = {
       first: 1.0,           // $200 kit cost - high penalty, load 100%
       business: 1.0,        // $150 kit cost - high penalty, load 100%
       premiumEconomy: 1.0,  // $100 kit cost - medium penalty, load 100%
-      economy: this.economyLoadFactor  // Computed based on avg flight distance
+      economy: economyFactor  // Calculated per-flight from first principles
     };
 
     const rawDemand = flight.passengers[kitClass];
