@@ -51,10 +51,10 @@ export class FlightLoader {
 
     // END-GAME FLAGS:
     // - isLastDay: Day 29 - game ends, don't send extra kits anywhere
-    // - isNearEnd: Day 28+ - reduce extra loading significantly
+    // - isNearEnd: Day 20+ - STOP extra loading to prevent spoke overflow (was Day 28)
     // - isEndGame: Day 27+ - start returning kits to HUB1
     const isLastDay = currentDay >= 29;
-    const isNearEnd = currentDay >= 28;
+    const isNearEnd = currentDay >= 20;  // FIX 4: Stop extra loading much earlier
     const isEndGame = currentDay >= 27;
 
     // Sort flights by priority
@@ -310,11 +310,19 @@ export class FlightLoader {
     // Calculate actual deficit
     const destDeficit = Math.max(0, destDemand - destExpected);
 
-    // Check capacity constraint - SAFETY: Don't send if room < 100
+    // Check capacity constraint
     const destCapacity = destAirport.capacity[kitClass];
     const destRoom = Math.max(0, destCapacity - destCurrent - inFlightToDestination - processingAtDestination);
 
-    if (destRoom < 100) {
+    // FIX 5: Hard stop if spoke is already at 90%+ capacity
+    const totalAtDest = destCurrent + inFlightToDestination + processingAtDestination;
+    if (totalAtDest > destCapacity * 0.90) {
+      return 0;  // Spoke at 90%+ capacity, don't send anything extra
+    }
+
+    // FIX 1: Percentage-based room check instead of fixed 100
+    // Don't send if room is less than 15% of capacity
+    if (destRoom < destCapacity * 0.15) {
       return 0;  // Spoke is near capacity, don't risk overflow
     }
 
@@ -322,7 +330,12 @@ export class FlightLoader {
     const remainingCapacity = capacity - alreadyLoaded;
     const remainingStock = available - alreadyLoaded;
 
-    return Math.min(destDeficit, destRoom, remainingCapacity, remainingStock);
+    // FIX 2: Hard cap at 10% of destination capacity AND 50% of available room
+    const maxExtraByCapacity = Math.floor(destCapacity * 0.10);
+    const maxExtraByRoom = Math.floor(destRoom * 0.5);
+    const safeExtra = Math.min(destDeficit, maxExtraByCapacity, maxExtraByRoom, destRoom, remainingCapacity, remainingStock);
+
+    return safeExtra;
   }
 
   /**
