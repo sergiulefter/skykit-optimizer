@@ -98,6 +98,16 @@ export function HomePage({ game, theme, onToggleTheme }: HomePageProps) {
     { label: 'Penalties', value: `${gameState.stats.totalPenalties} • ${formatCost(gameState.stats.penaltyCost)}` }
   ];
 
+  const planePath = 'M24 2L28.5 14H42L37 24L42 34H28.5L24 46L19.5 34H6L11 24L6 14H19.5Z';
+  const trailPath = 'M4 24H16';
+
+  const flightPaths = [
+    { id: 'alpha', className: 'flight-plane flight-plane--one', style: { animationDelay: '2s' }, color: 'var(--color-accent)' },
+    { id: 'bravo', className: 'flight-plane flight-plane--two', style: { animationDelay: '8s' }, color: 'var(--color-accent-2)' },
+    { id: 'charlie', className: 'flight-plane flight-plane--three', style: { animationDelay: '4s' }, color: 'var(--color-warning)' },
+    { id: 'delta', className: 'flight-plane flight-plane--four', style: { animationDelay: '12s' }, color: 'rgba(255,255,255,0.65)' }
+  ];
+
   return (
     <PageShell>
       <SiteHeader isConnected={isConnected} theme={theme} onToggleTheme={onToggleTheme} />
@@ -118,6 +128,19 @@ export function HomePage({ game, theme, onToggleTheme }: HomePageProps) {
         <div className="pointer-events-none absolute inset-0 opacity-40 grid-overlay animate-float" />
         <div className="pointer-events-none absolute -top-28 -right-24 h-72 w-72 bg-accent/20 blur-[120px] animate-gradient" />
         <div className="pointer-events-none absolute -bottom-16 -left-10 h-64 w-64 bg-accent-2/25 blur-[120px] animate-gradient" />
+        <div className="air-traffic" aria-hidden>
+          {flightPaths.map(flight => (
+            <svg
+              key={flight.id}
+              viewBox="0 0 48 48"
+              className={flight.className}
+              style={{ ...flight.style, color: flight.color }}
+            >
+              <path d={planePath} />
+              <path d={trailPath} className="trail" />
+            </svg>
+          ))}
+        </div>
 
         <div className="relative z-10 space-y-10">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">

@@ -143,3 +143,86 @@ body {
   background-size: 80px 80px;
   mask-image: radial-gradient(circle, rgba(0, 0, 0, 0.65), transparent 70%);
 }
+
+@keyframes flight-path-a {
+  0% { transform: translate3d(-15%, 20%, 0) scale(0.8) rotate(-6deg); opacity: 0; }
+  10% { opacity: 0.9; }
+  50% { opacity: 1; }
+  100% { transform: translate3d(115%, -10%, 0) scale(1.05) rotate(4deg); opacity: 0; }
+}
+
+@keyframes flight-path-b {
+  0% { transform: translate3d(110%, 70%, 0) scale(0.9) rotate(12deg); opacity: 0; }
+  5% { opacity: 0.8; }
+  50% { opacity: 1; }
+  100% { transform: translate3d(-20%, -5%, 0) scale(1.15) rotate(0deg); opacity: 0; }
+}
+
+@keyframes flight-path-c {
+  0% { transform: translate3d(10%, 120%, 0) scale(0.7) rotate(-18deg); opacity: 0; }
+  20% { opacity: 0.9; }
+  75% { opacity: 1; }
+  100% { transform: translate3d(60%, -30%, 0) scale(1.1) rotate(-8deg); opacity: 0; }
+}
+
+@keyframes flight-path-d {
+  0% { transform: translate3d(140%, 30%, 0) scale(0.9) rotate(20deg); opacity: 0; }
+  15% { opacity: 0.85; }
+  80% { opacity: 1; }
+  100% { transform: translate3d(-30%, 80%, 0) scale(1.05) rotate(5deg); opacity: 0; }
+}
+
+.air-traffic {
+  position: absolute;
+  inset: -10% -5% 0 -5%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.flight-plane {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  opacity: 0;
+  filter: drop-shadow(0 8px 20px rgba(46, 180, 255, 0.35));
+  color: var(--color-accent);
+}
+
+.flight-plane path {
+  fill: currentColor;
+  opacity: 0.9;
+}
+
+.flight-plane .trail {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 4 6;
+  opacity: 0.7;
+}
+
+.flight-plane--one {
+  top: 10%;
+  left: -5%;
+  animation: flight-path-a 22s linear infinite;
+}
+
+.flight-plane--two {
+  bottom: 20%;
+  right: -10%;
+  animation: flight-path-b 28s linear infinite;
+}
+
+.flight-plane--three {
+  bottom: -5%;
+  left: 15%;
+  animation: flight-path-c 24s linear infinite;
+}
+
+.flight-plane--four {
+  top: 25%;
+  right: -12%;
+  animation: flight-path-d 30s linear infinite;
+}
