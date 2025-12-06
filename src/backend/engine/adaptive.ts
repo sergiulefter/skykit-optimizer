@@ -245,33 +245,32 @@ export class AdaptiveEngine {
 
   /**
    * Calculate optimal purchase amounts based on learned patterns
+   * NOTE: This method exists but was never called - now integrated with getPurchaseMultiplier
    */
   suggestPurchaseAdjustment(
     kitClass: keyof PerClassAmount,
     currentStock: number,
     threshold: number
   ): number {
-    // If we've been having unfulfilled penalties, buy more aggressively
-    const recentUnfulfilled = this.penaltyHistory.filter(
-      p => p.type === 'FLIGHT_UNFULFILLED' && p.kitClass === kitClass
-    ).length;
+    return this.getPurchaseMultiplier(kitClass);
+  }
 
-    if (recentUnfulfilled > 10) {
-      return 1.2;  // Buy 20% more
-    } else if (recentUnfulfilled > 5) {
-      return 1.1;  // Buy 10% more
-    }
-
-    // If we've been having overflow, buy less
-    const recentOverflow = this.penaltyHistory.filter(
-      p => p.type === 'INVENTORY_EXCEEDS_CAPACITY' && p.kitClass === kitClass
-    ).length;
-
-    if (recentOverflow > 5) {
-      return 0.9;  // Buy 10% less
-    }
-
-    return 1.0;  // No adjustment
+  /**
+   * Get purchase multiplier based on recent unfulfilled penalty trends
+   * This is the main method used by PurchasingManager to adjust purchase quantities
+   *
+   * ANALYSIS: Aggressive cold-start purchasing ($760M) performed WORSE than baseline ($752.8M)
+   *
+   * ROOT CAUSE: UNFULFILLED happens at SPOKES, not HUB1. Buying more kits fills HUB1
+   * but doesn't help because kits only reach spokes via flights with passengers.
+   * The bottleneck is DISTRIBUTION, not PURCHASING.
+   *
+   * STRATEGY: Return neutral multiplier (1.0) - purchasing is not the lever to pull
+   */
+  getPurchaseMultiplier(_kitClass: keyof PerClassAmount): number {
+    // After testing, aggressive purchasing doesn't reduce UNFULFILLED
+    // because the constraint is kit distribution to spokes, not total kits purchased
+    return 1.0;
   }
 
   /**

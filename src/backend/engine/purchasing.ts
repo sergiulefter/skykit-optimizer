@@ -13,6 +13,7 @@ import { PurchaseConfig, DEFAULT_PURCHASE_CONFIG } from './types';
 import { InventoryManager } from './inventory';
 import { DemandForecaster } from './forecasting';
 import { problemLogger } from './problemLogger';
+import { getAdaptiveEngine } from './adaptive';
 
 // Kit costs from hackitall2025 API specification
 const KIT_COSTS: Record<keyof PerClassAmount, number> = {
@@ -148,6 +149,13 @@ export class PurchasingManager {
     const apiLimit = this.config.apiLimits[kitClass];
     const maxPerOrder = this.config.maxPerOrder[kitClass];
 
+    // ADAPTIVE PURCHASING: Get multiplier EARLY so it affects all purchase decisions
+    const adaptive = getAdaptiveEngine();
+    const purchaseMultiplier = adaptive.getPurchaseMultiplier(kitClass);
+
+    // Apply multiplier to maxPerOrder for ALL purchase paths
+    const adjustedMaxPerOrder = Math.ceil(maxPerOrder * purchaseMultiplier);
+
     // FIX 23: END-GAME BURST PURCHASING
     // Buy aggressively before lead time deadline to prevent end-game UNFULFILLED spike
     // Lead times: First=48h, Business=36h, PE=24h, Economy=12h
@@ -165,7 +173,8 @@ export class PurchasingManager {
 
     if (isNearDeadline) {
       const maxToBuy = maxTotalPurchase - this.totalPurchased[kitClass];
-      const burstAmount = Math.min(maxPerOrder * 2, maxToBuy, apiLimit, maxRoom); // Double the normal order
+      // Apply adaptive multiplier to burst purchasing too
+      const burstAmount = Math.min(adjustedMaxPerOrder * 2, maxToBuy, apiLimit, maxRoom);
 
       if (burstAmount > 0) {
         return burstAmount;
@@ -178,9 +187,10 @@ export class PurchasingManager {
 
     if (isEarlyGame) {
       // Day 0-2: Purchase at EVERY HOUR if below 50% capacity
+      // Use adaptive multiplier for early game too
       if (currentStock < capacity * 0.5) {
         const maxToBuy = maxTotalPurchase - this.totalPurchased[kitClass];
-        const earlyGameAmount = Math.min(maxPerOrder, maxToBuy, apiLimit, maxRoom);
+        const earlyGameAmount = Math.min(adjustedMaxPerOrder, maxToBuy, apiLimit, maxRoom);
 
         if (earlyGameAmount > 0) {
           return earlyGameAmount;
@@ -199,7 +209,9 @@ export class PurchasingManager {
       );
 
       const maxToBuy = maxTotalPurchase - this.totalPurchased[kitClass];
-      const emergencyAmount = Math.min(threshold, maxToBuy, apiLimit, maxRoom);
+      // Apply adaptive multiplier to emergency purchases
+      const adjustedThreshold = Math.ceil(threshold * purchaseMultiplier);
+      const emergencyAmount = Math.min(adjustedThreshold, maxToBuy, apiLimit, maxRoom);
 
       if (emergencyAmount > 0) {
         return emergencyAmount;
@@ -228,12 +240,13 @@ export class PurchasingManager {
       knownFlights
     );
 
-    // Calculate deficit with buffer
-    const deficit = Math.max(0, (demand * this.config.demandBuffer) - totalExpected);
+    // Calculate deficit with buffer AND adaptive multiplier (already calculated above)
+    const baseDeficit = Math.max(0, (demand * this.config.demandBuffer) - totalExpected);
+    const deficit = Math.ceil(baseDeficit * purchaseMultiplier);
 
-    // Calculate purchase amount (respect all limits)
+    // Calculate purchase amount (respect all limits) - use adjustedMaxPerOrder
     const maxToBuy = maxTotalPurchase - this.totalPurchased[kitClass];
-    const toPurchase = Math.min(deficit, maxPerOrder, maxToBuy, apiLimit, maxRoom);
+    const toPurchase = Math.min(deficit, adjustedMaxPerOrder, maxToBuy, apiLimit, maxRoom);
 
     if (toPurchase > 100) {
       return toPurchase;

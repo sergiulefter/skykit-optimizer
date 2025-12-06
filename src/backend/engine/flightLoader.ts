@@ -56,7 +56,7 @@ export class FlightLoader {
     // - isNearEnd: Day 20+ - STOP extra loading to prevent spoke overflow (was Day 28)
     // - isEndGame: Day 27+ - start returning kits to HUB1
     const isLastDay = currentDay >= 29;
-    const isNearEnd = currentDay >= 15;  // Original value
+    const isNearEnd = currentDay >= 15;  // Original value - optimizations didn't help
     const isEndGame = currentDay >= 27;
 
     // Sort flights by priority
@@ -373,24 +373,18 @@ export class FlightLoader {
     const totalAtDest = destCurrent + inFlightToDestination + processingAtDest;
     const destRoom = Math.max(0, destCapacity - totalAtDest);
 
-    // FIX 13: CRITICAL - Server adds landed kits to stock IMMEDIATELY
-    // Our local tracking shows 128 kits, but server has 882 (750+ kit difference!)
-    // Problem: We calculate totalAtDest = stock + inFlight + processing
-    // But server: stock already includes landed kits that we put in processing queue
-    //
-    // Solution: COMPLETELY DISABLE extra loading for Economy
-    // Economy overflow is 696 penalties = 73.58M (main problem!)
-    if (kitClass === 'economy') {
-      return 0;  // NO extra Economy kits to spokes - ever!
-    }
-
-    // For other classes, use moderate thresholds
+    // Default thresholds for extra loading
     let saturationThreshold = 0.85;
     let roomCheckThreshold = 0.20;
     let maxExtraPercent = 0.05;
 
+    // Economy extra loading disabled - causes overflow without reducing UNFULFILLED
+    if (kitClass === 'economy') {
+      return 0;  // NO extra Economy kits to spokes
+    }
+
     if (kitClass === 'premiumEconomy') {
-      // PE also has some issues
+      // PE also has some issues - use moderate thresholds
       saturationThreshold = 0.75;
       roomCheckThreshold = 0.30;
       maxExtraPercent = 0.02;

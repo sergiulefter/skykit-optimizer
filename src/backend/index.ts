@@ -317,6 +317,8 @@ async function runGame() {
     let lastCost = 0;
     let lastResponse: HourResponseDto | null = null;
     let previousResponse: HourResponseDto | null = null;
+    let cumulativePenaltyCost = 0;
+    let cumulativePenaltyCount = 0;
 
     for (let day = 0; day < TOTAL_DAYS; day++) {
       for (let hour = 0; hour < HOURS_PER_DAY; hour++) {
@@ -338,6 +340,10 @@ async function runGame() {
             // Log to file for analysis
             logPenaltyToFile(penalty, gameState);
           }
+
+          // Accumulate penalties for cumulative stats display
+          cumulativePenaltyCost += previousResponse.penalties.reduce((sum, p) => sum + p.penalty, 0);
+          cumulativePenaltyCount += previousResponse.penalties.length;
 
           // Feed penalties to AdaptiveEngine for real-time learning
           if (previousResponse.penalties.length > 0) {
@@ -403,8 +409,8 @@ async function runGame() {
           transportCost: gameState.getTransportCost(),
           processingCost: gameState.getProcessingCost(),
           purchaseCost: gameState.getPurchaseCost(),
-          penaltyCost: response.penalties.reduce((sum, p) => sum + p.penalty, 0),
-          totalPenalties: response.penalties.length,
+          penaltyCost: cumulativePenaltyCost,
+          totalPenalties: cumulativePenaltyCount,
           roundsCompleted: roundNum,
           comparableScore,
           endOfGameFlightPenalty
