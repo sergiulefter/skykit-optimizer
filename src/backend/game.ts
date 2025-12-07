@@ -147,7 +147,7 @@ function writePenaltyLogs() {
   fs.writeFileSync(logFile, JSON.stringify(output, null, 2));
   console.log(`\n[LOG] Overflow analysis written to: ${logFile}`);
 
-  // Console summary - focused on overflow
+  // Console summary - focused on overflow  
   console.log('\n========== OVERFLOW ANALYSIS ==========');
   console.log(`Total overflow penalties: ${overflowPenalties.length}`);
   console.log(`Total penalty cost: $${(totalOverflow / 1000000).toFixed(2)}M`);

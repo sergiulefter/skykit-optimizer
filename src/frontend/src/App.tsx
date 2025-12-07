@@ -13,6 +13,7 @@ const NetworkPage = lazy(() => import('./pages/NetworkPage'));
 const EventsPage = lazy(() => import('./pages/EventsPage'));
 const AboutPage = lazy(() => import('./pages/AboutPage'));
 const ContactUsPage = lazy(() => import('./pages/ContactUsPage'));
+const AlgorithmPage = lazy(() => import('./pages/AlgorithmPage'));
 
 // Loading fallback component
 function PageLoader() {
@@ -54,6 +55,10 @@ function App() {
           <Route
             path="/about"
             element={<AboutPage game={game} theme={theme} onToggleTheme={toggleTheme} language={language} onToggleLanguage={toggleLanguage} />}
+          />
+          <Route
+            path="/algorithm"
+            element={<AlgorithmPage game={game} theme={theme} onToggleTheme={toggleTheme} language={language} onToggleLanguage={toggleLanguage} />}
           />
           <Route
             path="/contact"
