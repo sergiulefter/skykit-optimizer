@@ -1,8 +1,8 @@
 import axios, { AxiosInstance } from 'axios';
 import { HourRequestDto, HourResponseDto } from '../types';
 
-const DEFAULT_API_KEY = '43b9ab90-b593-404c-a8d8-aaa074e181e1';
-const DEFAULT_BASE_URL = 'http://127.0.0.1:8080';
+const DEFAULT_API_KEY = '8ea40362-68fb-4473-95a9-32b7d47c9362';
+const DEFAULT_BASE_URL = 'https://hackaton2025-lsac-eval.cfapps.eu12.hana.ondemand.com';
 
 export class ApiClient {
   private client: AxiosInstance;
