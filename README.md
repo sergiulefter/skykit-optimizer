@@ -1,5 +1,5 @@
 # SkyKit Optimizer  
-### 🏅 8th Place – Honorable Mention  
+### 8th Place – Honorable Mention  
 **HACKITALL 2025 – SAP 48H Section**
 
 SkyKit Optimizer is a full-stack airline logistics optimization system built in 48 hours during HACKITALL 2025 (SAP track).
@@ -8,7 +8,7 @@ Our solution ranked **8th overall**, receiving an **Honorable Mention** for engi
 
 ---
 
-# ✈️ The Challenge
+# The Challenge
 
 The SAP 48H competition simulated a real-world airline rotables logistics system.
 
@@ -30,7 +30,7 @@ Lower score = better performance.
 
 ---
 
-# 🧠 Our Solution
+# Our Solution
 
 SkyKit Optimizer is a **stateful, adaptive optimization engine with real-time observability**.
 
@@ -43,7 +43,7 @@ Instead of using fixed rules, the system:
 
 ---
 
-## 🚀 Key Engineering Ideas
+## Key Engineering Ideas
 
 ### Dataset-Aware Calibration
 Before simulation starts, the backend analyzes:
@@ -97,7 +97,7 @@ The backend exports structured penalty diagnostics:
 
 ---
 
-# 🏗 Architecture
+# Architecture
 
 ## Backend (TypeScript / Node.js)
 
@@ -126,7 +126,7 @@ The frontend acts as the **control center** for the entire system.
 
 ---
 
-# ▶️ Running the Project
+# Running the Project
 
 You only need to start the frontend.
 
@@ -154,7 +154,7 @@ No manual backend startup required.
 
 ---
 
-# 💡 Why This Project Stands Out
+#  Why This Project Stands Out
 
 This project demonstrates:
 
@@ -171,15 +171,15 @@ All built within a strict 48-hour hackathon.
 
 ---
 
-# 🏆 Result
+# Result
 
-- 🏅 8th Place Overall  
-- 🎖 Honorable Mention  
+- 8th Place Overall  
+- Honorable Mention  
 - Delivered complete full-stack adaptive optimizer in 48 hours  
 
 ---
 
-# 📜 License
+# License
 
 Hackathon and portfolio project.  
-Built for HACKITALL 2025 – SAP 48H Section.
+Built for HACKITALL I 2025 – SAP 48H Section.
